@@ -22,7 +22,7 @@ from utils.criterion import UndirectedGraphLoss
 
 # Parse Arguments
 parser = argparse.ArgumentParser(description='Train GraphGPT')
-parser.add_argument('--config', type=str, default='config.yaml',
+parser.add_argument('--config', type=str, default='configs/default.yaml',
                     help='Path to configuration file (default: config.yaml)')
 parser.add_argument('--gpu', type=int, default=None,
                     help='ID of the GPU to use (default: CPU)')
@@ -41,6 +41,7 @@ with open(args.config, 'r') as f:
     config = yaml.safe_load(f)
     
 # print configuration
+print("---------------- Configs -----------------")
 print(yaml.dump(config, indent=4))
 
     
@@ -48,7 +49,6 @@ print(yaml.dump(config, indent=4))
 data_config = config['data_config']
 model_config = config['model_config']
 training_config = config['training_config']
-optimizer_config = config['optimizer_config']
 logging_config = config['logging_config']
 checkpoint_config = config['checkpoint_config']
 
@@ -64,7 +64,7 @@ else:
 
 
 # Create Dataset and Dataloader
-pad_value = -1
+pad_value = data_config['pad_value']
 
 dataset = RenderedPlanarGraphDataset(
     num_samples=data_config['num_samples'], 
@@ -102,10 +102,18 @@ model = GraphGPT(
 num_params = count_parameters(model)
 model = model.to(device)
 
-
+# create the expontial moving average of the model
+ema_decay = training_config.get("ema_decay")
+if ema_decay is not None and ema_decay > 0:
+    from torch_ema import ExponentialMovingAverage
+    use_ema = True
+    ema = ExponentialMovingAverage(model.parameters(), decay=ema_decay)
+else:
+    use_ema = False
+    
 # optimizers and criterions
-lr = float(optimizer_config['lr'])
-weight_decay = float(optimizer_config['weight_decay'])
+lr = float(training_config['lr'])
+weight_decay = float(training_config['weight_decay'])
 params_group = model.get_params_group(
     lr=lr, 
     weight_decay=weight_decay,
@@ -119,7 +127,6 @@ warmup_epochs = float(training_config['warmup_epochs'])
 epochs = int(training_config['epochs'])
 total_steps = len(dataloader) * epochs + 1
 warmup_steps = int(total_steps * warmup_epochs)
-
 
 scheduler = OneCycleLR(optimizer, max_lr=lr, total_steps=total_steps, 
                        pct_start=warmup_epochs, anneal_strategy='cos', 
@@ -152,12 +159,16 @@ for epoch in mb:
         loss = criterion(pred, target)
         loss.backward()
         optimizer.step()
-
+        
         # accumulate loss
         loss_accum += loss.item()
 
         # update scheduler
         scheduler.step()
+        
+        # update ema model
+        if use_ema:
+            ema.update()
 
         # get last learning rate
         last_lr = scheduler.get_last_lr()[0]
