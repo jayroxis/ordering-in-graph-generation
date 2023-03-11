@@ -134,7 +134,7 @@ class RenderedPlanarGraphDataset(RandomPlanarGraphDataset):
                 # Get node coordinate pairs
                 node_pair = get_node_pairs_single(V, E)
                 
-                # Random Shuffle the node pairs
+                # Sort the node pairs by descending order
                 node_pair = sort_by_columns(node_pair)
                 
                 # Get rendered image
