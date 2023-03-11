@@ -1,0 +1,34 @@
+data_config:
+  num_samples: 5000
+  img_size: 256
+  num_points: 15
+  epsilon: 0.1
+  tiny_angle: 1.2
+  batch_size: 50
+  num_workers: 8
+
+model_config:
+  embed_dim: 512
+  vis_enc_name: efficientnet_b0
+  gpt_output_size: 4
+  gpt_d_model: 512
+  gpt_num_layers: 8
+  max_freq: 10
+
+training_config:
+  epochs: 200
+  warmup_epochs: 0.05
+
+optimizer_config:
+  lr: 2e-4
+  weight_decay: 2e-4
+  
+logging_config:
+  log_to_file: True
+  log_file: "training.log"
+  log_to_tensorboard: True
+
+checkpoint_config:
+  save_interval: 50
+  save_checkpoint: true
+  checkpoint_file: "epoch_{epoch}.pth"
