@@ -18,9 +18,9 @@ model_config:
 
 training_config:
   epochs: 1000
+  warmup_epochs: 0.01
   lr: 0.0002
   weight_decay: 0.0
-  warmup_epochs: 0.01
   
 logging_config:
   log_to_file: True
