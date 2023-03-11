@@ -129,7 +129,7 @@ def draw_graph(G, save_path=None):
         plt.show()
 
         
-def plot_graph(node_pair, save_path=None):
+def plot_graph(node_pair, save_path=None, threshold=0.01):
     """
     Plots a graph with node coordinates from the input node_pair using matplotlib or saves to file
     if save_path is specified.
@@ -143,7 +143,7 @@ def plot_graph(node_pair, save_path=None):
             The coordinates range is (0, 1) at each dimension for the plot.
         save_path (string): the path to save the plot to as a file (default is None)
     """
-    G = create_graph(node_pair)
+    G = create_graph(node_pair, threshold=threshold)
     draw_graph(G, save_path=save_path)
 
 

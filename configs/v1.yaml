@@ -6,6 +6,7 @@ data_config:
   tiny_angle: 1.2
   batch_size: 50
   num_workers: 8
+  pad_value: -1
 
 model_config:
   embed_dim: 512
@@ -18,10 +19,8 @@ model_config:
 training_config:
   epochs: 200
   warmup_epochs: 0.05
-
-optimizer_config:
-  lr: 2e-4
-  weight_decay: 2e-4
+  lr: 0.0002
+  weight_decay: 0.0
   
 logging_config:
   log_to_file: True
