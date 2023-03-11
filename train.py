@@ -107,7 +107,7 @@ if ema_decay is not None and ema_decay > 0:
 else:
     use_ema = False
     
-# optimizers and criterions
+# optimizers and 
 lr = float(training_config['lr'])
 weight_decay = float(training_config['weight_decay'])
 params_group = model.get_params_group(
