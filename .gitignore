@@ -1,3 +1,13 @@
+# Ignore folders that start with .
+.*
+*.ipynb
+
+# Ignore folders named "runs" and "archived"
+runs/
+archived/
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
