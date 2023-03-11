@@ -10,19 +10,20 @@ class GraphGPT(nn.Module):
     def __init__(
         self, 
         vis_enc_name="efficientnet_b0", 
-        image_size=256, 
+        img_size=256, 
         embed_dim=512, 
         max_freq=10, 
         gpt_output_size=4, 
         gpt_d_model=512, 
-        gpt_num_layers=8
+        gpt_num_layers=8,
+        **kwargs,
     ):
         super().__init__()
 
         # Visual encoder
         self.vis_enc = VisualEncoder(
             vis_enc_name, 
-            image_size=image_size, 
+            img_size=img_size, 
             embed_dim=embed_dim
         )
 

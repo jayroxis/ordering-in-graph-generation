@@ -1,32 +1,61 @@
 import os
 import yaml
 import argparse
-from pprint import pprint
 from fastprogress.fastprogress import master_bar, progress_bar
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import OneCycleLR
 from torch.utils.tensorboard import SummaryWriter
 
 from utils.data.dataset import *
 from utils.data.misc import PadSequence
-from utils.data.planar_graph import PlanarGraph
 from utils.model.misc import *
 from utils.model.graph_gpt import GraphGPT
-from utils.helpers import format_time
 from utils.criterion import UndirectedGraphLoss
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Train GraphGPT')
+    parser.add_argument('--config', type=str, default='configs/default.yaml',
+                        help='Path to configuration file (default: config.yaml)')
+    parser.add_argument('--gpu', type=int, default=None,
+                        help='ID of the GPU to use (default: CPU)')
+    args = parser.parse_args()
+    return args
+
+    
+def get_dataloader(data_config):
+    dataset = RenderedPlanarGraphDataset(**data_config)
+    pad_value = data_config['pad_value']
+    dataloader = DataLoader(
+        dataset, 
+        collate_fn=PadSequence(pad_value),
+        batch_size=data_config['batch_size'], 
+        shuffle=data_config['shuffle'], 
+        num_workers=data_config['num_workers'],
+        pin_memory=data_config['pin_memory']
+    )
+    return dataloader
+
+
+def get_model(model_config):
+    model = GraphGPT(
+        **model_config
+    )
+    _ = count_parameters(model)
+    return model
+
+
+def save_checkpoint(model, logging_config, name):
+    checkpoint_file = logging_config['checkpoint_file'].format(epoch=name)
+    checkpoint_file = os.path.join(logging_directory, checkpoint_file)
+    torch.save(model.state_dict(), checkpoint_file)
+    return None
+
+
 # Parse Arguments
-parser = argparse.ArgumentParser(description='Train GraphGPT')
-parser.add_argument('--config', type=str, default='configs/default.yaml',
-                    help='Path to configuration file (default: config.yaml)')
-parser.add_argument('--gpu', type=int, default=None,
-                    help='ID of the GPU to use (default: CPU)')
-args = parser.parse_args()
+args = parse_arguments()
 
 
 # Set device for PyTorch computations
@@ -50,7 +79,6 @@ data_config = config['data_config']
 model_config = config['model_config']
 training_config = config['training_config']
 logging_config = config['logging_config']
-checkpoint_config = config['checkpoint_config']
 
     
 # create SummaryWriter object for logging
@@ -63,43 +91,11 @@ else:
     logging_directory = os.path.join("logs", exp_name)
 
 
-# Create Dataset and Dataloader
-pad_value = data_config['pad_value']
-
-dataset = RenderedPlanarGraphDataset(
-    num_samples=data_config['num_samples'], 
-    img_size=data_config['img_size'],
-    num_points=data_config['num_points'],
-    epsilon=data_config['epsilon'],
-    tiny_angle=data_config['tiny_angle'],
-)
-
-dataloader = DataLoader(
-    dataset, 
-    batch_size=data_config['batch_size'], 
-    shuffle=True, 
-    collate_fn=PadSequence(pad_value),
-    num_workers=data_config['num_workers']
-)
-
+# Create Dataloader
+dataloader = get_dataloader(data_config)
 
 # create models
-embed_dim = model_config['embed_dim']
-vis_enc_name = model_config['vis_enc_name']
-gpt_output_size = model_config['gpt_output_size']
-gpt_d_model = model_config['gpt_d_model']
-gpt_num_layers = model_config['gpt_num_layers']
-
-model = GraphGPT(
-    vis_enc_name=vis_enc_name, 
-    image_size=data_config['img_size'], 
-    embed_dim=embed_dim, 
-    max_freq=model_config['max_freq'], 
-    gpt_output_size=gpt_output_size, 
-    gpt_d_model=gpt_d_model, 
-    gpt_num_layers=gpt_num_layers,
-)
-num_params = count_parameters(model)
+model = get_model(model_config)
 model = model.to(device)
 
 # create the expontial moving average of the model
@@ -111,7 +107,7 @@ if ema_decay is not None and ema_decay > 0:
 else:
     use_ema = False
     
-# optimizers and criterions
+# optimizers and 
 lr = float(training_config['lr'])
 weight_decay = float(training_config['weight_decay'])
 params_group = model.get_params_group(
@@ -119,8 +115,6 @@ params_group = model.get_params_group(
     weight_decay=weight_decay,
 )
 optimizer = torch.optim.AdamW(params_group)
-criterion = UndirectedGraphLoss()
-
 
 # create scheduler
 warmup_epochs = float(training_config['warmup_epochs'])
@@ -128,11 +122,20 @@ epochs = int(training_config['epochs'])
 total_steps = len(dataloader) * epochs + 1
 warmup_steps = int(total_steps * warmup_epochs)
 
-scheduler = OneCycleLR(optimizer, max_lr=lr, total_steps=total_steps, 
-                       pct_start=warmup_epochs, anneal_strategy='cos', 
-                       div_factor=25, final_div_factor=1000, 
-                       last_epoch=-1, verbose=False)
+scheduler = OneCycleLR(
+    optimizer, 
+    max_lr=lr, 
+    total_steps=total_steps, 
+    pct_start=warmup_epochs, 
+    anneal_strategy=training_config['anneal_strategy'], 
+    div_factor=training_config['div_factor'], 
+    final_div_factor=training_config['final_div_factor'], 
+    last_epoch=-1, 
+    verbose=False
+)
 
+# loss function
+criterion = UndirectedGraphLoss()
 
 # create master progress bar
 mb = master_bar(range(epochs))
@@ -150,7 +153,7 @@ for epoch in mb:
         optimizer.zero_grad()
         
         # forward pass
-        pad = torch.ones_like(node_pair)[:, :1] * pad_value
+        pad = torch.ones_like(node_pair)[:, :1] * data_config['pad_value']
         node_pair = torch.cat([node_pair, pad], dim=1)
         pred = model(img, node_pair[:, :-1])
         target = node_pair
@@ -210,15 +213,12 @@ for epoch in mb:
         writer.add_scalar("Loss/train", avg_loss, epoch+1)
     
     # Save model checkpoint
-    if checkpoint_config['save_checkpoint'] and epoch % checkpoint_config['save_interval'] == 0:
-        checkpoint_file = checkpoint_config['checkpoint_file'].format(epoch=epoch+1)
-        checkpoint_file = os.path.join(logging_directory, checkpoint_file)
-        torch.save(model.state_dict(), checkpoint_file)
+    if logging_config['save_checkpoint'] and epoch % logging_config['save_interval'] == 0:
+        save_checkpoint(model, logging_config, name=epoch+1)
 
-# Save final checkpoint        
-checkpoint_file = checkpoint_config['checkpoint_file'].format(epoch="final")
-checkpoint_file = os.path.join(logging_directory, checkpoint_file)
-torch.save(model.state_dict(), checkpoint_file)
+# Save final checkpoint
+if logging_config['save_checkpoint']:        
+    save_checkpoint(model, logging_config, name="final")
 
 # close SummaryWriter
 if logging_config['log_to_tensorboard']:
