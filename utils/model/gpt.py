@@ -15,7 +15,12 @@ class DecoderLayer(nn.Module):
     and feedforward layers.
     """
 
-    def __init__(self, d_model, nhead=8, dropout=0.0, batch_first=True):
+    def __init__(
+            self, d_model, 
+            nhead=8, dropout=0.0, 
+            batch_first=True, 
+            **kwargs,
+        ):
         """
         Initializes the DecoderLayer.
 
@@ -113,7 +118,7 @@ class GPT(nn.Module):
     The GPT Float model.
     """
 
-    def __init__(self, output_size, input_size, d_model, num_layers):
+    def __init__(self, output_size, input_size, d_model, num_layers, **kwargs):
         """
         Initializes the GPT Float model.
 
@@ -131,7 +136,7 @@ class GPT(nn.Module):
         # decoder layers
         self.decoder = nn.ModuleList(
             [
-                DecoderLayer(d_model, batch_first=True)
+                DecoderLayer(d_model, batch_first=True, **kwargs)
                 for _ in range(num_layers)
             ]
         )

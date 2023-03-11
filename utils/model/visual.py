@@ -1,7 +1,42 @@
-import math
 import torch
 import torch.nn as nn
 import timm
+
+
+class PositionModule(nn.Module):
+    def __init__(self):
+        """
+        Initialize the PositionModule class.
+        """
+        super(PositionModule, self).__init__()
+
+    def forward(self, x):
+        """
+        Compute the positions of every pixel in the input tensor x.
+
+        Args:
+            x: A PyTorch tensor of shape (B, C, W, H).
+
+        Returns:
+            A PyTorch tensor of shape (B, 2, W, H) containing the positions
+            of every pixel, normalized between 0 and 1.
+        """
+        B, C, W, H = x.size()
+
+        # Create x and y coordinate grids using the `torch.linspace()` function
+        y_coords = torch.linspace(
+            0, 1, W, device=x.device, dtype=x.dtype
+        ).view(1, 1, W, 1).expand(B, 1, W, H)
+
+        x_coords = torch.linspace(
+            0, 1, H, device=x.device, dtype=x.dtype
+        ).view(1, 1, 1, H).expand(B, 1, W, H)
+
+        # Concatenate the x and y coordinates to create the positions tensor
+        positions = torch.cat((x_coords, y_coords), dim=1).type(x.dtype)
+
+        return positions
+    
 
 
 class VisualEncoder(nn.Module):
@@ -12,7 +47,10 @@ class VisualEncoder(nn.Module):
         embed_dim: int = 256, 
         num_heads: int = 8, 
         dropout: float = 0.0,
-        num_enc_layer = 1,
+        num_enc_layer: int = 1,
+        in_chans: int = 3,
+        use_pixel_pos_overlay: bool = False,
+        **kwargs
     ):
         """
         Initialize the visual encoder.
@@ -23,15 +61,26 @@ class VisualEncoder(nn.Module):
             embed_dim (int, optional): The hidden size for the transformer layer. Defaults to 256.
             num_heads (int, optional): The number of attention heads for the transformer layer. Defaults to 8.
             dropout (float, optional): The dropout rate for the transformer layer. Defaults to 0.1.
+            in_chans (int, optional): The number of channels in input image. Defaults to 3.
+            use_pixel_pos_overlay (bool, optional): Whether to add positional information as an overlay on the input image.
+                                                     Defaults to False.
         """
         super(VisualEncoder, self).__init__()
-        self.encoder = timm.create_model(model_name, num_classes=0)
+
+        # Pixel position overlay layer
+        self.use_pixel_pos_overlay = use_pixel_pos_overlay
+        if use_pixel_pos_overlay:
+            self.pixel_overlay = PositionModule()
+            in_chans = in_chans + 2
+
+        # Backbone encoder model
+        self.encoder = timm.create_model(model_name, num_classes=0, in_chans=in_chans)
         self.output_channels = self.encoder.num_features
         self.img_size = img_size
 
         # calculate the number of visual tokens
         with torch.no_grad():
-            dummy_img = torch.zeros((1, 3, img_size, img_size))
+            dummy_img = torch.zeros((1, in_chans, img_size, img_size))
             features = self.encoder.forward_features(dummy_img)
             features = features.permute(0, 2, 3, 1)
             features = features.contiguous()
@@ -72,6 +121,8 @@ class VisualEncoder(nn.Module):
         Returns:
             torch.Tensor: Encoded feature tensor with shape (batch_size, num_tokens, output_channels).
         """
+        if self.use_pixel_pos_overlay:
+            x = torch.cat([x, self.pixel_overlay(x)], dim=1)
         features = self.encoder.forward_features(x)
         features = features.permute(0, 2, 3, 1)
         features = features.contiguous()

@@ -24,7 +24,8 @@ class GraphGPT(nn.Module):
         self.vis_enc = VisualEncoder(
             vis_enc_name, 
             img_size=img_size, 
-            embed_dim=embed_dim
+            embed_dim=embed_dim,
+            **kwargs,
         )
 
         # Positional encoder
@@ -38,7 +39,8 @@ class GraphGPT(nn.Module):
             input_size=embed_dim, 
             output_size=gpt_output_size, 
             d_model=gpt_d_model, 
-            num_layers=gpt_num_layers
+            num_layers=gpt_num_layers,
+            **kwargs,
         )
 
     def forward(self, img, node_pair=None):
