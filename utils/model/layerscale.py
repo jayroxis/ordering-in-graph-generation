@@ -21,7 +21,7 @@ class LayerScale(nn.Module):
         "Going Deeper with Image Transformers." arXiv preprint arXiv:2103.17239 (2021).
     """
 
-    def __init__(self, d_model, init_values=1e-3):
+    def __init__(self, d_model, init_values=1.0, **kwargs):
         super(LayerScale, self).__init__()
 
         self.alpha = nn.Parameter(init_values * torch.ones(d_model))
