@@ -15,7 +15,8 @@ class RandomPlanarGraphDataset(data.Dataset):
         epsilon, 
         tiny_angle, 
         max_retries=10, 
-        verbose=False
+        verbose=False,
+        **kwargs,
     ):
         """
         Constructor for the RandomPlanarGraphDataset class.

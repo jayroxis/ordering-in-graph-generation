@@ -8,7 +8,7 @@ class VisualEncoder(nn.Module):
     def __init__(
         self, 
         model_name: str = "efficientnet_b0", 
-        image_size: int = 256, 
+        img_size: int = 256, 
         embed_dim: int = 256, 
         num_heads: int = 8, 
         dropout: float = 0.0,
@@ -19,7 +19,7 @@ class VisualEncoder(nn.Module):
 
         Args:
             model_name (str, optional): Name of the timm model to use as the encoder. Defaults to "efficientnet_b0".
-            image_size (int, optional): The input image size. Defaults to 256.
+            img_size (int, optional): The input image size. Defaults to 256.
             embed_dim (int, optional): The hidden size for the transformer layer. Defaults to 256.
             num_heads (int, optional): The number of attention heads for the transformer layer. Defaults to 8.
             dropout (float, optional): The dropout rate for the transformer layer. Defaults to 0.1.
@@ -27,11 +27,11 @@ class VisualEncoder(nn.Module):
         super(VisualEncoder, self).__init__()
         self.encoder = timm.create_model(model_name, num_classes=0)
         self.output_channels = self.encoder.num_features
-        self.image_size = image_size
+        self.img_size = img_size
 
         # calculate the number of visual tokens
         with torch.no_grad():
-            dummy_img = torch.zeros((1, 3, image_size, image_size))
+            dummy_img = torch.zeros((1, 3, img_size, img_size))
             features = self.encoder.forward_features(dummy_img)
             features = features.permute(0, 2, 3, 1)
             features = features.contiguous()
