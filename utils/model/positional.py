@@ -144,7 +144,70 @@ class SinusoidalMLPEncoder(torch.nn.Module):
         ]
         return params
     
-    
+
+
+class MLPEncoder(torch.nn.Module):
+    def __init__(self, d_model):
+        """
+        Initialize the MLP encoder.
+
+        Args:
+        - d_model: output dimensionality of the encoder
+        """
+        super().__init__()
+        self.d_model = d_model
+        self.mlp = torch.nn.Sequential(
+            torch.nn.Linear(d_model, d_model),
+            torch.nn.GELU(),
+            torch.nn.LayerNorm(d_model),
+            torch.nn.Linear(d_model, d_model)
+        )
+        self._init_weights_()
+
+    def _init_weights_(self):
+        """ Initialize MLP weights """
+        for m in self.mlp:
+            if isinstance(m, torch.nn.Linear):
+                torch.nn.init.normal_(
+                    m.weight, 
+                    std=1 / self.d_model
+                )
+
+    def forward(self, x):
+        """
+        Apply the MLP transformation to the input.
+
+        Args:
+        - x: input tensor of shape (batch_size, set_size, D)
+
+        Returns:
+        - output: tensor of shape (batch_size, set_size, d_model) representing the encoded input
+        """
+        output = self.mlp(x)
+
+        return output
+
+    @torch.jit.ignore
+    def get_params_group(self, lr=1e-3, weight_decay=1e-4):
+        """
+        Get the optimizer parameters for training the model.
+
+        Args:
+            lr (float): Learning rate for the optimizer. Defaults to 1e-3.
+                        weight_decay (float): Weight decay for the optimizer. Defaults to 1e-4.
+
+        Returns:
+            list: A list of dictionaries, where each dictionary specifies the parameters 
+                  and optimizer settings for a different parameter group.
+        """
+        # define the parameter groups for the optimizer
+        params = [
+            {"params": self.parameters(), "lr": lr, "weight_decay": weight_decay},
+        ]
+        return params
+
+
+
     
 def test_sinusoidal_encoder(
     # Define test input
@@ -192,6 +255,36 @@ def test_sinusoidal_mlp_encoder():
 
     # Initialize encoder
     encoder = SinusoidalMLPEncoder(d_model, max_freq)
+
+    # Test output shape
+    output_tensor = encoder(input_tensor)
+    expected_shape = (batch_size, set_size, d_model)
+    assert output_tensor.shape == expected_shape, f"Output shape {output_tensor.shape} does not match expected shape {expected_shape}"
+
+    # Test output range
+    output_data = output_tensor.detach().numpy()
+    assert np.all(output_data >= -1) and np.all(output_data <= 1), "Output values outside expected range [-1, 1]"
+
+    print("All tests passed!")
+
+
+
+def test_mlp_encoder():
+    # Set random seed for reproducibility
+    torch.manual_seed(0)
+
+    # Define test parameters
+    batch_size = 4
+    set_size = 10
+    D = 3
+    d_model = 16
+
+    # Generate random input
+    input_data = np.random.rand(batch_size, set_size, D)
+    input_tensor = torch.tensor(input_data, dtype=torch.float)
+
+    # Initialize encoder
+    encoder = MLPEncoder(d_model)
 
     # Test output shape
     output_tensor = encoder(input_tensor)
