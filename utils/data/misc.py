@@ -62,36 +62,37 @@ def extract_node_positions(G):
 
     
 
-# def sort_by_columns(E):
-#     """
-#     Sorts the input tensor E along its columns, based on the minimum
-#     value of each row across two equal-sized submatrices of E.
+def shuffle_node_pair(node_pair):
+    """
+    Shuffles node pairs within a tensor along the first and second dimensions.
     
-#     Args:
-#         E (torch.Tensor): Input tensor to be sorted. Must have shape (n_samples, n_features).
-    
-#     Returns:
-#         sorted_E (torch.Tensor): Sorted tensor, with the same shape as E.
-#     """
-#     # Make a copy of the input tensor E and store its original data type
-#     orig_E = E.clone()
-#     orig_dtype = E.dtype
-    
-#     # Divide E into two equal-sized submatrices
-#     half_target_dim = int(E.shape[-1] // 2)
-#     E1 = E[..., :half_target_dim]
-#     E2 = E[..., half_target_dim:]
-    
-#     # Compute the element-wise minimum of E1 and E2
-#     E = E1 + E2
-    
-#     # Convert the tensor to a numpy array and use np.lexsort to get the sorted indices
-#     E = E.numpy()
-#     indices = np.lexsort([E[:, i] for i in range(E.shape[1]-1, -1, -1)])
-    
-#     # Convert the sorted indices back to a torch tensor and return it
-#     sorted_E = torch.as_tensor(orig_E[indices], dtype=orig_dtype)
-#     return sorted_E
+    Args:
+    - node_pair: A tensor of shape (batch_size, seq_length, depth) where
+                 each element along the third dimension contains two values
+                 representing a pair of nodes.
+                 
+    Returns:
+    - shuffled: A tensor of the same shape as the input tensor where
+                the node pairs have been shuffled along the first and
+                second dimensions.
+    """
+    # Get the shape of the input tensor
+    batch_size, seq_length, depth = node_pair.shape
+
+    # Reshape the tensor so that each node pair becomes a single dimension
+    node_pair = node_pair.reshape(batch_size, seq_length, 2, -1)
+
+    # Shuffle the node pairs along the second dimension
+    node_pair = shuffle_tensor(node_pair, dim=2)
+
+    # Shuffle the node pairs along the first dimension
+    node_pair = shuffle_tensor(node_pair, dim=1)
+
+    # Reshape the tensor back to the original shape
+    shuffled = node_pair.reshape(batch_size, seq_length, depth)
+
+    return shuffled
+
 
 
 def sort_by_columns(E, ascending=False):
