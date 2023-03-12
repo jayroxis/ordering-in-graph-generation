@@ -34,7 +34,7 @@ def shuffle_tensor(x: torch.Tensor, dim: int = 0) -> torch.Tensor:
     x_shape = tuple(x.shape[:dim+1])
 
     # Get the indices that would sort a random tensor along the specified dimension
-    indices = torch.argsort(torch.rand(x_shape), dim=dim)
+    indices = torch.argsort(torch.rand(x_shape, device=x.device), dim=dim)
     
     # Add singleton dimensions to indices to match the shape of x
     n = x.dim() - dim - 1   
@@ -45,7 +45,6 @@ def shuffle_tensor(x: torch.Tensor, dim: int = 0) -> torch.Tensor:
     # Shuffle the tensor using gather
     shuffled_x = torch.gather(x, dim=dim, index=indices)
     return shuffled_x
-
 
 
 def unpad_node_pairs(node_pair, padding_value=-1.0, error=0.1):
