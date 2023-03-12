@@ -188,7 +188,7 @@ for epoch in mb:
         # Shuffle the real sequences to reorder the tokens
         shuffled_real_sequence = shuffle_node_pair(real_sequence)
 
-        # pass the real sequences to the discriminator
+        # pass the real vs shuffled real sequences to the discriminator
         real_scores = discriminator(
             seq_1=shuffled_real_sequence,
             seq_2=real_sequence
@@ -201,7 +201,7 @@ for epoch in mb:
         d_loss_accum += d_loss.item()
         d_loss.backward()
         
-        if i % min(disc_grad_accum, epoch + 1) == 0:
+        if i % min(disc_grad_accum, epoch + 2) == 0:
             disc_optimizer.step()
 
         """ Generator """
