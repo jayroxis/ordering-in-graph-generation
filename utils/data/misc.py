@@ -4,7 +4,7 @@ import numpy as np
 from torch.nn.utils.rnn import pad_sequence
 import numpy as np
 import networkx as nx
-
+from ..helpers import shuffle_tensor
 
 
 class PadSequence:
