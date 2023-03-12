@@ -29,7 +29,9 @@ def permutation_invariant_errors(x, y, p=2, root=True, pad_value=-1):
     assert x.shape == y.shape, "x and y must have the same shape"
     B, L, N = x.shape
     pad_mask = (y == pad_value)
-    large_value = 100   # a large value for masking positions, if use torch.inf, the loss will be nan
+
+    # a large value for masking positions
+    large_value = 100   # if use torch.inf, the loss will be nan
 
     # Unpad the stop token
     unpadded = y.clone()
