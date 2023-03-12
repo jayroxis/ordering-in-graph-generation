@@ -5,6 +5,49 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+
+def shuffle_tensor(x: torch.Tensor, dim: int = 0) -> torch.Tensor:
+    """
+    Shuffle the tensor along the specified dimension independently 
+    for each slice along that dimension.
+    
+    [NOTE] this is different to torch.perm which is shared permutation ordering.
+    
+    For example, for a 2D tensor:
+        x = tensor([[0, 0, 1, 6, 2],
+                    [5, 4, 7, 2, 4]])
+            
+    Aftering shuffling `x` becomes:
+            tensor([[0, 0, 6, 2, 1],
+                    [5, 7, 2, 4, 4]])
+                    
+    This works for any given dimension `dim` for an arbitary shape input tensor `x`.
+    
+    Args:
+        x (torch.Tensor): The tensor to shuffle.
+        dim (int, optional): The dimension along which to shuffle. Default is 0.
+
+    Returns:
+        torch.Tensor: The shuffled tensor.
+    """
+    # Get the shape of the slice of x along the specified dimension
+    x_shape = tuple(x.shape[:dim+1])
+
+    # Get the indices that would sort a random tensor along the specified dimension
+    indices = torch.argsort(torch.rand(x_shape), dim=dim)
+    
+    # Add singleton dimensions to indices to match the shape of x
+    n = x.dim() - dim - 1   
+    indices = indices[(..., ) + (None,) * n] 
+    indices = indices * torch.ones_like(x)
+    indices = indices.long()
+    
+    # Shuffle the tensor using gather
+    shuffled_x = torch.gather(x, dim=dim, index=indices)
+    return shuffled_x
+
+
+
 def unpad_node_pairs(node_pair, padding_value=-1.0, error=0.1):
     """
     Truncates the padding values at the end of the node_pair tensor.
