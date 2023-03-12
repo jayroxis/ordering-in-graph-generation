@@ -12,7 +12,7 @@ from utils.data.dataset import *
 from utils.data.misc import PadSequence
 from utils.model.misc import *
 from utils.model.graph_gpt import GraphGPT
-from utils.criterion import UndirectedGraphLoss
+from utils.criterion import UnorderedUndirectedGraphLoss
 
 
 def parse_arguments():
@@ -135,7 +135,7 @@ scheduler = OneCycleLR(
 )
 
 # loss function
-criterion = UndirectedGraphLoss()
+criterion = UnorderedUndirectedGraphLoss()
 
 # create master progress bar
 mb = master_bar(range(epochs))
@@ -156,11 +156,20 @@ for epoch in mb:
         pad = torch.ones_like(node_pair)[:, :1] * data_config['pad_value']
         node_pair = torch.cat([node_pair, pad], dim=1)
         pred = model(img, node_pair[:, :-1])
-        target = node_pair
+        target = node_pair.clone()
 
         # calculate loss
         loss = criterion(pred, target)
         loss.backward()
+
+        # gradient safety check
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                if torch.isnan(param.grad).any() or torch.isinf(param.grad).any():
+                    print('Gradient is NaN or Inf')
+                    print(name, param, param.grad)
+                    import pdb; pdb.set_trace()
+
         optimizer.step()
         
         # accumulate loss
