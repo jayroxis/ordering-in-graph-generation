@@ -12,7 +12,7 @@ from utils.data.dataset import *
 from utils.data.misc import PadSequence
 from utils.model.misc import *
 from utils.model.graph_gpt import GraphGPT
-from utils.criterion import UndirectedGraphLoss
+from utils.model.discriminator import ConstractiveDiscriminator
 
 
 def parse_arguments():
@@ -24,15 +24,15 @@ def parse_arguments():
     args = parser.parse_args()
     return args
 
-    
+
 def get_dataloader(data_config):
     dataset = RenderedPlanarGraphDataset(**data_config)
     pad_value = data_config['pad_value']
     dataloader = DataLoader(
-        dataset, 
+        dataset,
         collate_fn=PadSequence(pad_value),
-        batch_size=data_config['batch_size'], 
-        shuffle=data_config['shuffle'], 
+        batch_size=data_config['batch_size'],
+        shuffle=data_config['shuffle'],
         num_workers=data_config['num_workers'],
         pin_memory=data_config['pin_memory']
     )
@@ -68,19 +68,19 @@ else:
 # Load configuration file
 with open(args.config, 'r') as f:
     config = yaml.safe_load(f)
-    
+
 # print configuration
 print("---------------- Configs -----------------")
 print(yaml.dump(config, indent=4))
 
-    
+
 # Extract configuration parameters
 data_config = config['data_config']
 model_config = config['model_config']
 training_config = config['training_config']
 logging_config = config['logging_config']
 
-    
+
 # create SummaryWriter object for logging
 if logging_config['log_to_tensorboard']:
     writer = SummaryWriter()
@@ -106,7 +106,13 @@ if ema_decay is not None and ema_decay > 0:
     ema = ExponentialMovingAverage(model.parameters(), decay=ema_decay)
 else:
     use_ema = False
-    
+
+# create the discriminator
+input_dim = model_config['gpt_output_size']
+discriminator = ConstractiveDiscriminator(input_dim=input_dim)
+discriminator = discriminator.to(device)
+
+
 # optimizers and 
 lr = float(training_config['lr'])
 weight_decay = float(training_config['weight_decay'])
@@ -115,6 +121,14 @@ params_group = model.get_params_group(
     weight_decay=weight_decay,
 )
 optimizer = torch.optim.AdamW(params_group)
+
+disc_lr = float(training_config['disc_lr'])
+disc_weight_decay = float(training_config['disc_weight_decay'])
+disc_optimizer = torch.optim.AdamW(
+    discriminator.parameters(),
+    lr=disc_lr,
+    weight_decay=disc_weight_decay,
+)
 
 # create scheduler
 warmup_epochs = float(training_config['warmup_epochs'])
@@ -134,8 +148,11 @@ scheduler = OneCycleLR(
     verbose=False
 )
 
-# loss function
-criterion = UndirectedGraphLoss()
+
+# discriminator gradient accumulation
+disc_grad_accum = training_config.get('disc_grad_accum')
+if disc_grad_accum is None:
+    disc_grad_accum = 1
 
 # create master progress bar
 mb = master_bar(range(epochs))
@@ -144,27 +161,66 @@ mb = master_bar(range(epochs))
 for epoch in mb:
     model.train()
     loss_accum = 0.0
+    d_loss_accum = 0.0
     
     progress = progress_bar(dataloader, parent=mb)
     for i, (img, node_pair) in enumerate(progress):
         
         img, node_pair = img.to(device), node_pair.to(device)
         
-        optimizer.zero_grad()
-        
         # forward pass
         pad = torch.ones_like(node_pair)[:, :1] * data_config['pad_value']
         node_pair = torch.cat([node_pair, pad], dim=1)
         pred = model(img, node_pair[:, :-1])
-        target = node_pair
+        real_sequence = node_pair
 
-        # calculate loss
-        loss = criterion(pred, target)
-        loss.backward()
-        optimizer.step()
+        """ Discriminator """
+        disc_optimizer.zero_grad()
+
+        generated_sequence = pred.detach()
+
+        # pass the generated vs real to the discriminator
+        generated_scores = discriminator(
+            seq_1=generated_sequence,
+            seq_2=real_sequence
+        )
+
+        # Shuffle the real sequences to reorder the tokens
+        shuffled_indices = torch.randperm(real_sequence.size(1))
+        shuffled_real_sequence = real_sequence[:, shuffled_indices, :]
+
+        # pass the real sequences to the discriminator
+        real_scores = discriminator(
+            seq_1=shuffled_real_sequence,
+            seq_2=real_sequence
+        )
+
+        # compute discriminator loss
+        d_loss = torch.mean(generated_scores) - torch.mean(real_scores)
+
+        # optimize discriminator
+        d_loss_accum += d_loss.item()
+        d_loss.backward()
         
-        # accumulate loss
-        loss_accum += loss.item()
+        if i % disc_grad_accum == 0:
+            disc_optimizer.step()
+
+        """ Generator """
+        optimizer.zero_grad()
+
+        # pass the generated sequences to the discriminator again
+        generated_sequence = pred
+        generated_scores = discriminator(
+            seq_1=generated_sequence,
+            seq_2=real_sequence
+        )
+
+        # compute generator loss
+        g_loss = -torch.mean(generated_scores)
+
+        # optimize generator
+        g_loss.backward()
+        optimizer.step()
 
         # update scheduler
         scheduler.step()
@@ -173,26 +229,35 @@ for epoch in mb:
         if use_ema:
             ema.update()
 
+        """ Statistics """
+
+        # accumulate loss
+        loss_accum += g_loss.item()
+
         # get last learning rate
         last_lr = scheduler.get_last_lr()[0]
 
         # print progress
         progress.comment = (
             f"Epoch {epoch+1}/{epochs}, "
-            f"Loss: {loss.item():.4f}, "
-            f"Avg Loss: {loss_accum / (i + 1):.4f}, "
+            f"Gen Loss: {g_loss.item():.4f}, "
+            f"Disc Loss: {d_loss.item():.4f}, "
+            f"Avg Gen Loss: {loss_accum / (i + 1):.4f}, "
+            f"Avg Disc Loss: {d_loss_accum / (i + 1):.4f}, "
             f"LR: {last_lr:.6f}"
         )
         progress.update(i+1)
 
     # calculate average loss
     avg_loss = loss_accum / len(dataloader)
-    
+    avg_d_loss = d_loss_accum / len(dataloader)
+
     # construct message
     msg = []
     msg.append("Epoch {}/{}".format(epoch+1, epochs))
     msg.append("LR: {:.6f}".format(lr))
-    msg.append("Loss: {:.4f}".format(avg_loss))
+    msg.append("Avg Gen Loss: {:.4f}".format(avg_loss))
+    msg.append("Avg Disc Loss: {:.4f}".format(avg_d_loss))
     
     # join message lines
     msg = " | ".join(msg)
@@ -206,11 +271,13 @@ for epoch in mb:
         log_file = os.path.join(logging_directory, log_file)
         with open(log_file, 'a') as f:
             f.write(f"Epoch {epoch+1}/{epochs}, "
-                    f"Avg Loss: {avg_loss:.4f}\n")
+                    f"Avg Gen Loss: {avg_loss:.4f}, "
+                    f"Avg Disc Loss: {d_loss.item():.4f}\n")
     
     # log to tensorboard
     if logging_config['log_to_tensorboard']:
-        writer.add_scalar("Loss/train", avg_loss, epoch+1)
+        writer.add_scalar("Loss/train_gen", avg_loss, epoch+1)
+        writer.add_scalar("Loss/train_disc", d_loss.item(), epoch+1)
     
     # Save model checkpoint
     if logging_config['save_checkpoint'] and epoch % logging_config['save_interval'] == 0:

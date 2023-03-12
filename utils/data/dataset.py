@@ -134,8 +134,8 @@ class RenderedPlanarGraphDataset(RandomPlanarGraphDataset):
                 # Get node coordinate pairs
                 node_pair = get_node_pairs_single(V, E)
                 
-                # Sort the node pairs by descending order
-                node_pair = sort_by_columns(node_pair)
+                # Random Shuffle the node pairs
+                node_pair = node_pair[torch.randperm(node_pair.size()[0])]
                 
                 # Get rendered image
                 linewidth = np.random.randint(5, 10)
