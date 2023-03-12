@@ -5,6 +5,25 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+def shuffle_tensor(x, dim=1):
+    """
+    Shuffle the tensor on given dimension independently 
+    [Note] this is different to torch.perm which is shared permutation ordering.
+    """
+    x_shape = tuple(x.shape[:dim+1])
+    
+    indices = torch.argsort(torch.rand(x_shape), dim=dim)
+    
+    # Add singleton dimensions to indices
+    n = x.dim() - dim - 1   
+    indices = indices[(..., ) + (None,) * n] 
+    indices = indices * torch.ones_like(x)
+    indices = indices.long()
+    
+    shuffled_x = torch.gather(x, dim=dim, index=indices)
+    return shuffled_x
+
+
 def unpad_node_pairs(node_pair, padding_value=-1.0, error=0.1):
     """
     Truncates the padding values at the end of the node_pair tensor.
