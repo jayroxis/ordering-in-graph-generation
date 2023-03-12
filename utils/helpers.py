@@ -39,7 +39,7 @@ def shuffle_tensor(x: torch.Tensor, dim: int = 0) -> torch.Tensor:
     # Add singleton dimensions to indices to match the shape of x
     n = x.dim() - dim - 1   
     indices = indices[(..., ) + (None,) * n] 
-    indices = indices * torch.ones_like(x)
+    indices = indices.to(x.device) * torch.ones_like(x)
     indices = indices.long()
     
     # Shuffle the tensor using gather

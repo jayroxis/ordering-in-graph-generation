@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import OneCycleLR
 from torch.utils.tensorboard import SummaryWriter
 
 from utils.data.dataset import *
-from utils.data.misc import PadSequence
+from utils.data.misc import PadSequence, shuffle_node_pair
 from utils.model.misc import *
 from utils.model.graph_gpt import GraphGPT
 from utils.model.discriminator import ConstractiveDiscriminator
@@ -186,8 +186,7 @@ for epoch in mb:
         )
 
         # Shuffle the real sequences to reorder the tokens
-        shuffled_indices = torch.randperm(real_sequence.size(1))
-        shuffled_real_sequence = real_sequence[:, shuffled_indices, :]
+        shuffled_real_sequence = shuffle_node_pair(real_sequence)
 
         # pass the real sequences to the discriminator
         real_scores = discriminator(
@@ -202,7 +201,7 @@ for epoch in mb:
         d_loss_accum += d_loss.item()
         d_loss.backward()
         
-        if i % disc_grad_accum == 0:
+        if i % min(disc_grad_accum, epoch + 1) == 0:
             disc_optimizer.step()
 
         """ Generator """
