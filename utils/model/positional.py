@@ -147,24 +147,40 @@ class SinusoidalMLPEncoder(torch.nn.Module):
 
 
 class MLPEncoder(torch.nn.Module):
-    def __init__(self, input_size, d_model, hidden_size=64):
+    def __init__(self, input_size, d_model, hidden_size=64, act='gelu', num_layers=2):
         """
         Initialize the MLP encoder.
 
         Args:
         - input_size: input dimensionality of the encoder
         - d_model: output dimensionality of the encoder
+        - hidden_size: size of the hidden layers in the MLP. Defaults to 64.
+        - act: activation function to use in the MLP. Defaults to 'gelu'.
+        - num_layers: number of layers in the MLP. Defaults to 2.
         """
         super().__init__()
         self.d_model = d_model
         self.input_size = input_size
         self.hidden_size = hidden_size
-        self.mlp = torch.nn.Sequential(
-            torch.nn.Linear(input_size, hidden_size),
-            torch.nn.GELU(),
-            torch.nn.LayerNorm(hidden_size),
-            torch.nn.Linear(hidden_size, d_model)
-        )
+        self.num_layers = num_layers
+        
+        # define the MLP layers
+        layers = []
+        for i in range(num_layers):
+            layers.append(torch.nn.Linear(input_size if i == 0 else hidden_size, hidden_size))
+            if act == 'relu':
+                layers.append(torch.nn.ReLU())
+            elif act == 'leaky_relU':
+                layers.append(torch.nn.LeakyReLU())
+            elif act == 'tanh':
+                layers.append(torch.nn.Tanh())
+            elif act == 'sigmoid':
+                layers.append(torch.nn.Sigmoid())
+            else:
+                layers.append(torch.nn.GELU())
+        layers.append(torch.nn.Linear(hidden_size, d_model))
+        
+        self.mlp = torch.nn.Sequential(*layers)
 
     def forward(self, x):
         """
@@ -187,7 +203,7 @@ class MLPEncoder(torch.nn.Module):
 
         Args:
             lr (float): Learning rate for the optimizer. Defaults to 1e-3.
-                        weight_decay (float): Weight decay for the optimizer. Defaults to 1e-4.
+            weight_decay (float): Weight decay for the optimizer. Defaults to 1e-4.
 
         Returns:
             list: A list of dictionaries, where each dictionary specifies the parameters 
