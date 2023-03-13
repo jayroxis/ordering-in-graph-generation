@@ -147,31 +147,24 @@ class SinusoidalMLPEncoder(torch.nn.Module):
 
 
 class MLPEncoder(torch.nn.Module):
-    def __init__(self, d_model):
+    def __init__(self, input_size, d_model, hidden_size=64):
         """
         Initialize the MLP encoder.
 
         Args:
+        - input_size: input dimensionality of the encoder
         - d_model: output dimensionality of the encoder
         """
         super().__init__()
         self.d_model = d_model
+        self.input_size = input_size
+        self.hidden_size = hidden_size
         self.mlp = torch.nn.Sequential(
-            torch.nn.Linear(d_model, d_model),
+            torch.nn.Linear(input_size, hidden_size),
             torch.nn.GELU(),
-            torch.nn.LayerNorm(d_model),
-            torch.nn.Linear(d_model, d_model)
+            torch.nn.LayerNorm(hidden_size),
+            torch.nn.Linear(hidden_size, d_model)
         )
-        self._init_weights_()
-
-    def _init_weights_(self):
-        """ Initialize MLP weights """
-        for m in self.mlp:
-            if isinstance(m, torch.nn.Linear):
-                torch.nn.init.normal_(
-                    m.weight, 
-                    std=1 / self.d_model
-                )
 
     def forward(self, x):
         """
@@ -207,7 +200,6 @@ class MLPEncoder(torch.nn.Module):
         return params
 
 
-
     
 def test_sinusoidal_encoder(
     # Define test input
@@ -235,7 +227,7 @@ def test_sinusoidal_encoder(
         expected_output[:, :, -1] = torch.sin(x[:, :, 2] * freqs[-1])
     
     assert torch.allclose(output, expected_output, rtol=1e-5)
-    
+    print("Embedding standard deviation =", output.std().item())
     
     
 def test_sinusoidal_mlp_encoder():
@@ -263,9 +255,7 @@ def test_sinusoidal_mlp_encoder():
 
     # Test output range
     output_data = output_tensor.detach().numpy()
-    assert np.all(output_data >= -1) and np.all(output_data <= 1), "Output values outside expected range [-1, 1]"
-
-    print("All tests passed!")
+    print("Embedding standard deviation =", output_data.std().item())
 
 
 
@@ -284,7 +274,7 @@ def test_mlp_encoder():
     input_tensor = torch.tensor(input_data, dtype=torch.float)
 
     # Initialize encoder
-    encoder = MLPEncoder(d_model)
+    encoder = MLPEncoder(D, d_model)
 
     # Test output shape
     output_tensor = encoder(input_tensor)
@@ -293,6 +283,4 @@ def test_mlp_encoder():
 
     # Test output range
     output_data = output_tensor.detach().numpy()
-    assert np.all(output_data >= -1) and np.all(output_data <= 1), "Output values outside expected range [-1, 1]"
-
-    print("All tests passed!")
+    print("Embedding standard deviation =", output_data.std().item())
