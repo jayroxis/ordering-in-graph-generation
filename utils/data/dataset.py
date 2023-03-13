@@ -15,7 +15,7 @@ class RandomPlanarGraphDataset(data.Dataset):
         epsilon, 
         tiny_angle, 
         max_retries=10, 
-        verbose=True,
+        verbose=False,
         **kwargs,
     ):
         """
