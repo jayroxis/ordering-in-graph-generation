@@ -8,10 +8,26 @@ from ..helpers import shuffle_tensor
 
 
 class PadSequence:
+    """
+    A collate function for PyTorch DataLoader that pads sequences in batches to the same length.
+    Supports both list/tuple of tensors and single tensor batches.
+    """
     def __init__(self, pad_value=-1):
+        """
+        Initializes the PadSequence instance with a padding value.
+        Args:
+            pad_value: The value to use for padding sequences to the same length.
+        """
         self.pad_value = pad_value
     
     def _pad_sequence(self, seq):
+        """
+        Pads a list of sequences with self.pad_value to the same length.
+        Args:
+            seq: A list of PyTorch tensors representing a batch of sequences.
+        Returns:
+            The padded tensor of shape (batch_size, max_seq_len, feature_dim).
+        """
         seq_padded = pad_sequence(
             seq, 
             batch_first=True, 
@@ -20,11 +36,33 @@ class PadSequence:
         return seq_padded
         
     def __call__(self, batch):
-        transposed = list(map(list, zip(*batch)))
-        padded = []
-        for items in transposed:
-            padded.append(self._pad_sequence(items))
-        return tuple(padded)
+        """
+        Pads a batch of sequences to the same length.
+        Args:
+            batch: A list/tuple of PyTorch tensors representing a batch of sequences
+                or a single PyTorch tensor representing a sequence.
+        Returns:
+            A tuple of padded tensors of shape (batch_size, max_seq_len, feature_dim),
+            where each tensor corresponds to the i-th element of the original tuples
+            in the batch input.
+        """
+        if isinstance(batch[0], torch.Tensor):
+            # If the batch is a tuple of tensors, pad it directly
+            tensors = list(batch)
+            collated = self._pad_sequence(tensors)
+            return collated
+        else:
+            # If the batch is a tuple of tuple or list of tensors, for example, 
+            # each row has two tensors (X, Y) as input and label.
+            transposed = list(map(list, zip(*batch)))
+
+            # Pad each list of tensors to the same length
+            padded = []
+            for items in transposed:
+                padded.append(self._pad_sequence(items))
+            # Return a tuple of padded tensors, one for each element of the original tuples
+            collated = tuple(padded)
+            return collated
 
     
     
