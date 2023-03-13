@@ -26,7 +26,14 @@ def parse_arguments():
 
     
 def get_dataloader(data_config):
-    dataset = RenderedPlanarGraphDataset(**data_config)
+    latent_sort_encoder = data_config.get("latent_sort_encoder")
+    if latent_sort_encoder is not None:
+        dataset = LatentSortGraphDataset(
+            encoder=torch.jit.load(latent_sort_encoder),
+            **data_config
+        )
+    else:
+        dataset = RenderedPlanarGraphDataset(**data_config)
     pad_value = data_config['pad_value']
     dataloader = DataLoader(
         dataset, 

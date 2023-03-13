@@ -164,3 +164,70 @@ class RenderedPlanarGraphDataset(RandomPlanarGraphDataset):
         print(f"Max retries exceeded for planar graph {index}")
         return None, None
 
+
+
+class LatentSortGraphDataset(RenderedPlanarGraphDataset):
+    """
+    Inherits from RenderedPlanarGraphDataset. This dataset class has latent sort
+    incorporated.
+
+    Latent sort is a technique to convert any unordered data structure, such as a
+    graph, into an ordered sequence. This is done using an encoder that encodes the
+    input sequence to a 1D latent sequence. By using `argsort` on the 1D latent
+    sequence, a deterministic order can be obtained for any unordered data structure.
+    This is crucial to convert any unordered data into an ordered sequence, which is
+    required for training sequential models.
+
+    Args:
+        - encoder (torch.nn.Module): The latent sort encoder.
+        *args: Positional arguments to pass to the parent class constructor.
+        **kwargs: Keyword arguments to pass to the parent class constructor.
+    
+    Note:
+        To get fast inference performance, when preparing latent sort encoder, it is
+        recommended to use PyTorch JIT module.
+
+        Here is an example code for saving the trained encoder model:
+
+        ```python
+        # Make sure the model is on cpu and set to eval mode.
+        encoder = encoder.cpu().eval()
+
+        # Enable OneDNN-Graph for fast inference
+        torch.jit.enable_onednn_fusion(enabled=True)
+
+        # Trace the model if it works, otherwise torch.jit.script
+        dummy_input = [torch.rand(32, 4)] # dummy input
+        traced_model = torch.jit.trace(encoder, dummy_input)
+        traced_model = torch.jit.freeze(traced_model)
+
+        # Disable OneDNN-Graph as default
+        torch.jit.enable_onednn_fusion(enabled=False)
+
+        ```
+
+    """
+    def __init__(self, encoder, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        encoder = encoder.cpu().eval()
+        self.encoder = encoder
+
+    @torch.no_grad()
+    def __getitem__(self, index):
+        """
+        Generate a rendered planar graph and corresponding node coordinate pairs for a
+        given index.
+
+        Args:
+            index (int): Index of the graph to generate.
+
+        Returns:
+            tuple: A tuple of the rendered image as a torch tensor and the node
+            coordinate pairs as a torch tensor.
+        """
+        img, node_pair = super().__getitem__(index)
+        emb = self.encoder(node_pair)
+        sort_idx = emb.argsort(0).squeeze()
+        node_pair = node_pair[sort_idx]
+        return img, node_pair
