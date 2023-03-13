@@ -9,7 +9,7 @@ data_config:
   pad_value: -1
   shuffle: True
   pin_memory: False
-  latent_sort_encoder: runs/mlp_latent_sorter.jit.pth
+  latent_sort_encoder: asset/mlp_latent_sorter.jit.pth
   
 model_config:
   embed_dim: 512

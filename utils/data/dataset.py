@@ -209,7 +209,7 @@ class LatentSortGraphDataset(RenderedPlanarGraphDataset):
     """
     def __init__(self, encoder, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         encoder = encoder.cpu().eval()
         self.encoder = encoder
 
@@ -228,6 +228,6 @@ class LatentSortGraphDataset(RenderedPlanarGraphDataset):
         """
         img, node_pair = super().__getitem__(index)
         emb = self.encoder(node_pair)
-        sort_idx = emb.argsort(0).squeeze()
+        sort_idx = emb.argsort(0).squeeze(1)
         node_pair = node_pair[sort_idx]
         return img, node_pair
