@@ -4,6 +4,10 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 
+import re
+import os
+import glob
+from PIL import Image
 
 
 def shuffle_tensor(x: torch.Tensor, dim: int = 0) -> torch.Tensor:
@@ -151,19 +155,24 @@ def create_graph(node_pair, threshold=0.01):
 
 
 
-def draw_graph(G, save_path=None):
+def draw_graph(G, save_path=None, margin=0.1):
     """
     Draws a networkx graph using matplotlib or saves to file if save_path is specified.
 
     Args:
-        G: a networkx graph object.
+        G (networkx.Graph): a networkx graph object.
         save_path (string): the path to save the plot to as a file (default is None)
+        margin (float): the image margin for plotting.
     """
     # Draw the graph
     pos = nx.get_node_attributes(G, 'pos')
     fig, ax = plt.subplots()
     nx.draw(G, pos=pos, ax=ax, font_color='white')
     nx.draw_networkx_labels(G, pos, font_size=10, font_family="sans-serif", font_color='white')
+
+    # Set x and y limits to range from 0 to 1
+    ax.set_xlim([- margin, 1 + margin])
+    ax.set_ylim([- margin, 1 + margin])
 
     # Save or show the plot
     if save_path is not None:
@@ -238,3 +247,72 @@ def format_time(seconds):
     m = int((seconds % 3600) / 60)
     s = int(seconds % 60)
     return "{:02d}:{:02d}:{:02d}".format(h, m, s)
+
+
+
+def create_gif_from_images(img_dir: str = "imgs/", 
+                           output_filename: str = "imgs/out.gif", 
+                           gt_filename: str = "gt.png", 
+                           duration: int = 500, 
+                           loop: int = 0, 
+                           delete_images: bool = True) -> None:
+    """
+    Creates a GIF animation from a sequence of PNG images in the specified directory.
+    If "gt.png" exists in the directory, it is concatenated to the right side of each frame.
+    Deletes all PNG images in the directory except for the generated GIF file, if delete_images is True.
+
+    Args:
+        img_dir (str): the path to the directory containing the PNG images (default is "imgs/")
+        output_filename (str): the filename to save the GIF animation to (default is "imgs/out.gif")
+        gt_filename (str): the filename of the ground truth PNG image to concatenate to each frame 
+            (default is "gt.png")
+        duration (int): the duration between frames in milliseconds (default is 500)
+        loop (int): The number of times to loop the animation (set to 0 to loop indefinitely).
+        delete_images (bool): whether to delete all PNG images in the directory except for the generated GIF file 
+            (default is True).
+    """
+
+    # Create a list of image filenames in the specified directory
+    img_filenames = glob.glob(f'{img_dir}/*.png')
+
+    # Extract the image numbers from the filenames using regular expressions
+    img_numbers = [
+        int(re.search(r'\d+', filename).group()) 
+        for filename in img_filenames if re.search(r'\d+', filename)
+    ]
+
+    # Sort the image filenames numerically by their extracted numbers
+    img_filenames_sorted = [
+        filename for _, filename in sorted(zip(img_numbers, img_filenames))
+    ]
+
+    # Open each image and append it to a list
+    images = []
+    for filename in img_filenames_sorted:
+        # Open the image file
+        img = Image.open(filename)
+
+        # If "gt.png" exists, concatenate it to the right side of the frame
+        gt_path = os.path.join(img_dir, gt_filename)
+        if os.path.isfile(gt_path):
+            gt_img = Image.open(gt_path)
+            # Merge the main image and "gt.png" image using numpy
+            img_arr = np.array(img.convert("RGBA"))
+            gt_arr = np.array(gt_img)
+            merged_arr = np.concatenate((img_arr, gt_arr), axis=1)
+            img = Image.fromarray(merged_arr, mode="RGBA")
+
+        images.append(img)
+
+    # Save the list of images as a GIF animation with a specified duration between frames
+    first_image = images[0]
+    remaining_images = images[1:]
+    first_image.save(output_filename, save_all=True, 
+                      append_images=remaining_images, 
+                      duration=duration, loop=loop)
+
+    # Delete all PNG images in the directory except for the generated GIF file
+    if delete_images:
+        for filename in img_filenames_sorted:
+            if filename != output_filename[:-4] + ".png":
+                os.remove(filename)
