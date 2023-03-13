@@ -64,13 +64,11 @@ def save_checkpoint(model, logging_config, name):
 # Parse Arguments
 args = parse_arguments()
 
-
 # Set device for PyTorch computations
 if args.gpu is not None and torch.cuda.is_available():
     device = torch.device(f"cuda:{args.gpu}")
 else:
     device = torch.device("cpu")
-
 
 # Load configuration file
 with open(args.config, 'r') as f:
@@ -113,8 +111,8 @@ if ema_decay is not None and ema_decay > 0:
     ema = ExponentialMovingAverage(model.parameters(), decay=ema_decay)
 else:
     use_ema = False
-    
-# optimizers and 
+
+# optimizers and scheduler
 lr = float(training_config['lr'])
 weight_decay = float(training_config['weight_decay'])
 params_group = model.get_params_group(
