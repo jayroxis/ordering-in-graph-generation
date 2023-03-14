@@ -4,7 +4,7 @@ data_config:
   num_points: 15
   epsilon: 0.1
   tiny_angle: 1.2
-  batch_size: 200
+  batch_size: 180
   num_workers: 16
   pad_value: -1
   shuffle: True
@@ -18,7 +18,7 @@ model_config:
   gpt_d_model: 512
   gpt_num_layers: 8
   max_freq: 10
-  checkpoint: runs/Mar13_08-37-22_lambdapgml/epoch_551.pth
+  checkpoint: runs/lightning_logs/version_1/checkpoints/epoch=414-step=66400.ckpt
 
 training_config:
   epochs: 1000

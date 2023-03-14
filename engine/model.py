@@ -21,9 +21,20 @@ class ModelModule(pl.LightningModule):
         checkpoint_path = model_config.get("checkpoint")
         if checkpoint_path is not None:
             print(f"Loading from '{checkpoint_path}'.")
-            print(self.model.load_state_dict(
-                torch.load(checkpoint_path, map_location="cpu")
-            ))
+            if checkpoint_path.endswith(".pt") or checkpoint_path.endswith(".pth"):
+                print(self.model.load_state_dict(
+                    torch.load(checkpoint_path, map_location="cpu")
+                ))
+            elif checkpoint_path.endswith(".ckpt"):
+                checkpoint = torch.load(checkpoint_path, map_location="cpu")
+                state_dict = checkpoint["state_dict"]
+                state_dict = {k.replace("model.", ""): v for k, v in state_dict.items()}
+                print(self.model.load_state_dict(
+                    state_dict
+                ))
+            else:
+                print("Unsupported file extension for checkpoint.")
+
 
     def forward(self, img, node_pair):
         return self.model(img, node_pair)
@@ -63,5 +74,9 @@ class ModelModule(pl.LightningModule):
             last_epoch=-1,
             verbose=False
         )
-
-        return [optimizer], [scheduler]
+        lr_scheduler_config = {
+            "scheduler": scheduler,
+            "interval": "step",
+            "frequency": 1,
+        }
+        return [optimizer], [lr_scheduler_config]
