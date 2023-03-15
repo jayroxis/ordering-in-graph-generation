@@ -23,9 +23,11 @@ def main():
     with open(args.config, 'r') as f:
         config = yaml.safe_load(f)
     
-    # recalculate batch size 
+    # Recalculate batch size 
     data_config = config['data_config']
-    data_config["batch_size"] = int(data_config["batch_size"] // len(gpus))
+    data_config["batch_size"] = int(
+        data_config["batch_size"] // len(gpus)
+    )
 
     # Create Data Module
     data_module = DataModule(data_config)
@@ -34,7 +36,9 @@ def main():
     # Set up training strategy
     training_config = config['training_config']
     epochs = int(training_config["epochs"])
-    total_steps = len(data_module.train_dataloader()) * epochs / len(gpus) + 1
+    total_steps = len(
+        data_module.train_dataloader()
+    ) * epochs + 1
     total_steps = int(total_steps)
     training_config["total_steps"] = total_steps
 
@@ -44,19 +48,21 @@ def main():
         training_config=training_config,
     )
 
-    # set up logger
+    # Set up logger
     tb_logger = pl_loggers.TensorBoardLogger(save_dir="runs/")
 
-    # Set up Trainer
-    swa_lrs = training_config.get('swa_lrs', training_config["lr"])
+    # Set up trainer
+    lr = float(training_config["lr"])
+    swa_lrs = training_config.get('swa_lrs', lr)
     training_strategy = training_config.get('training_strategy')
-
+    
+    # 
     trainer = pl.Trainer(
-        max_epochs=training_config['epochs'],
         devices=gpus,
         accelerator='gpu',
         precision=32,
         strategy=training_strategy,
+        max_epochs=training_config['epochs'],
         accumulate_grad_batches=training_config.get('grad_accum', 1),
         log_every_n_steps=training_config.get('log_interval', 1),
         check_val_every_n_epoch=training_config.get("check_val_every_n_epoch", 1),
