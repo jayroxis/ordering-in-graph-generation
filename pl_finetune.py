@@ -48,6 +48,9 @@ def main():
         model_config=config['model_config'], 
         training_config=training_config,
     )
+    # freeze the parameters of the module
+    for param in model_module.model.parameters():
+        param.requires_grad = False
     model_module.use_correction_model = True
     model_module.model.use_correction_model = True
     model_module.model._init_correction_model()

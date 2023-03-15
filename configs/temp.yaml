@@ -4,7 +4,7 @@ data_config:
   num_points: 15
   epsilon: 0.1
   tiny_angle: 1.2
-  batch_size: 100
+  batch_size: 200
   num_workers: 16
   pad_value: -1
   shuffle: True
@@ -18,7 +18,7 @@ model_config:
   gpt_d_model: 512
   gpt_num_layers: 8
   max_freq: 10
-  checkpoint: runs/lightning_logs/version_1/checkpoints/epoch=89-step=3600.ckpt
+  checkpoint: runs/lightning_logs/version_0/checkpoints/epoch=89-step=3600.ckpt
 
 training_config:
   epochs: 1000
@@ -29,6 +29,7 @@ training_config:
   div_factor: 25
   final_div_factor: 1000
   anneal_strategy: 'cos'
+  training_strategy: ddp_find_unused_parameters_false
   
 logging_config:
   log_to_file: True
