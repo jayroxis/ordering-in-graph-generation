@@ -28,6 +28,7 @@ training_config:
   div_factor: 25
   final_div_factor: 1000
   anneal_strategy: 'cos'
+  training_strategy: ddp_find_unused_parameters_false
   
 logging_config:
   log_to_file: True
