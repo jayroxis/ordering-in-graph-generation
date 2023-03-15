@@ -19,6 +19,7 @@ class DataModule(pl.LightningDataModule):
     def setup(self, stage: Optional[str] = None):
         latent_sort_encoder = self.data_config.get("latent_sort_encoder")
         if latent_sort_encoder is not None:
+            print("[INFO] Using Latent Ordering.")
             self.dataset = LatentSortGraphDataset(
                 encoder=torch.jit.load(latent_sort_encoder),
                 **self.data_config
