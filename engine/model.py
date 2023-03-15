@@ -35,13 +35,25 @@ class ModelModule(pl.LightningModule):
             else:
                 print("Unsupported file extension for checkpoint.")
 
+        # correction model
+        if "use_correction_model" not in model_config:
+            self.use_correction_model = False
 
     def forward(self, img, node_pair):
         return self.model(img, node_pair)
 
     def training_step(self, batch, batch_idx):
         img, node_pair = batch
-        pred = self(img, node_pair[:, :-1])
+        if self.use_correction_model:
+            pred = self.model.iterative_forward(
+                img,
+                seq_len=node_pair.shape[1],
+                stop_token_value=None,
+                stop_threshold=None,
+            )
+        else:
+            pred = self(img, node_pair[:, :-1])
+            
         loss = self.criterion(pred, node_pair)
         self.log('train_loss', loss)
         return loss
