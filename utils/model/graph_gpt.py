@@ -100,6 +100,7 @@ class GraphGPT(nn.Module):
                 pred, 
                 self.correction(visual_emb, pred)
             )
+            
 
         return pred
 

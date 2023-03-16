@@ -18,12 +18,13 @@ model_config:
   gpt_d_model: 512
   gpt_num_layers: 8
   max_freq: 10
-  checkpoint: runs/lightning_logs/version_0/checkpoints/epoch=89-step=3600.ckpt
+  checkpoint: runs/lightning_logs/version_0/checkpoints/epoch=388-step=15560.ckpt
+  use_correction_model: True
 
 training_config:
   epochs: 1000
-  warmup_epochs: 0.01
-  lr: 0.0002
+  warmup_epochs: 0.0
+  lr: 0.00015
   weight_decay: 0.0
   ema_decay: 0.995
   div_factor: 25

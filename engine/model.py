@@ -51,7 +51,7 @@ class ModelModule(pl.LightningModule):
                 stop_token_value=None,
                 stop_threshold=None,
             )
-            _, pred_tf = pred = self(img, node_pair[:, :-1])
+            _, pred_tf = self(img, node_pair[:, :-1])
             pred = torch.cat([pred, pred_tf], dim=0)
             node_pair = torch.cat([node_pair, node_pair], dim=0)
             loss = self.criterion(pred, node_pair)
