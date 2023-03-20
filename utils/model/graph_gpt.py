@@ -95,7 +95,12 @@ class GraphGPT(nn.Module):
 
         return params_group
     
-    def iterative_forward(self, img, seq_len=100, stop_token_value=-1.0, stop_threshold=1e-2):
+    def iterative_forward(
+        self, img, 
+        seq_len=100, 
+        stop_token_value=-1.0, 
+        stop_threshold=1e-2
+    ):
         """
         Perform iterative forward pass through the model.
 
