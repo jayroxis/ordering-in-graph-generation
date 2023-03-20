@@ -142,13 +142,14 @@ class UnorderedUndirectedGraphLoss(nn.Module):
 
 
 
-class UnorderedMatchLoss(nn.Module):
+class LastTokenMatchLoss(nn.Module):
     def __init__(self, pad_value=-1, fill_value=1e9):
-        super(UnorderedMatchLoss, self).__init__()
+        super(LastTokenMatchLoss, self).__init__()
         self.pad_value = pad_value
         self.fill_value = fill_value
 
     def forward(self, pred, target):
+        pred = pred[:, -1:]
         unmaksed_idx = (target != self.pad_value).all(-1)
         elu_dist = torch.cdist(pred, target, p=2.0).squeeze(1)
         abs_dist = torch.cdist(pred, target, p=1.0).squeeze(1)

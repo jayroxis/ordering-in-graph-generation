@@ -2,14 +2,14 @@ import torch
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import OneCycleLR
 from utils.model.graph_gpt import GraphGPT
-from utils.criterion import UndirectedGraphLoss
+from utils.criterion import LastTokenMatchLoss as GraphLoss
 
 
 class ModelModule(pl.LightningModule):
     def __init__(self, model_config, training_config):
         super().__init__()
         self.model = GraphGPT(**model_config)
-        self.criterion = UndirectedGraphLoss()
+        self.criterion = GraphLoss()
         self.model_config = model_config
         self.training_config = training_config
 
