@@ -76,6 +76,10 @@ def shuffle_node_pair(node_pair):
                 the node pairs have been shuffled along the first and
                 second dimensions.
     """
+
+    if node_pair.ndim == 2:
+        return node_pair[torch.randperm(node_pair.size(0))]
+
     # Get the shape of the input tensor
     batch_size, seq_length, depth = node_pair.shape
 
@@ -206,4 +210,20 @@ def get_node_pairs(V, E):
         raise ValueError("Invalid input shapes: V={}, E={}".format(V.shape, E.shape))
 
 
+
+def random_mask(node_pair, mask_prob=None):
+    # random mask probability
+    if mask_prob is None:
+        mask_prob = np.random.uniform(0.1, 0.9)
+    
+    # Generate a random mask
+    mask = torch.rand(node_pair.shape[0]) < mask_prob
+    while mask.all() or (~mask).all():
+        mask = torch.rand(node_pair.shape[0]) < mask_prob
+        
+    # Mask out the rows
+    masked = node_pair[mask]
+    unmasked = node_pair[~mask]
+
+    return masked, unmasked
         

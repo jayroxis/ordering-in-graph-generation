@@ -164,3 +164,13 @@ class RenderedPlanarGraphDataset(RandomPlanarGraphDataset):
         print(f"Max retries exceeded for planar graph {index}")
         return None, None
 
+
+
+class RandomMaskDataset(RenderedPlanarGraphDataset):
+
+    def __getitem__(self, index):
+        img, node_pair = super().__getitem__(index)
+        node_pair = shuffle_node_pair(node_pair)
+        
+        masked, unmasked = random_mask(node_pair, mask_prob=None)
+        return img, masked, unmasked

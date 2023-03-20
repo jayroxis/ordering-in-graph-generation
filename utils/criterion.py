@@ -4,6 +4,7 @@ import torch.nn as nn
 
 
 
+
 def permutation_invariant_errors(x, y, p=2, root=True, pad_value=-1):
     """
     Compute the mean of the minimum distances between each row of x and larger-indexed rows of y, 
@@ -139,3 +140,21 @@ class UnorderedUndirectedGraphLoss(nn.Module):
         if torch.isnan(final_loss).any() or torch.isinf(final_loss).any():
             import pdb; pdb.set_trace()
         return final_loss.mean()
+
+
+
+class UnorderedMatchLoss(nn.Module):
+    def __init__(self, pad_value=-1, fill_value=1e9):
+        super(UnorderedMatchLoss, self).__init__()
+        self.pad_value = pad_value
+        self.fill_value = fill_value
+
+    def forward(self, pred, target):
+        unmaksed_idx = (target != self.pad_value).all(-1)
+        elu_dist = torch.cdist(pred, target, p=2.0).squeeze(1)
+        abs_dist = torch.cdist(pred, target, p=1.0).squeeze(1)
+        dist = (elu_dist + abs_dist)
+        dist[~unmaksed_idx] = self.fill_value
+        min_dist = dist.min(-1).values
+        loss = min_dist.mean()
+        return loss
