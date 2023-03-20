@@ -101,7 +101,6 @@ class GraphGPT(nn.Module):
                 self.correction(visual_emb, pred)
             )
             
-
         return pred
 
     def get_params_group(self, *args, **kwargs):
