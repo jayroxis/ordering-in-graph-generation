@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 
-from .gpt import GPT
 from .visual import VisualEncoder
 from .correction import GraphTransformer
+from .next_token_transformer import NextTokenTransformer as GPT
 from .positional import SinusoidalMLPEncoder as PositionalEncoder
 
 
@@ -41,7 +41,8 @@ class GraphGPT(nn.Module):
             input_size=embed_dim, 
             output_size=gpt_output_size, 
             d_model=gpt_d_model, 
-            num_layers=gpt_num_layers
+            num_encoder_layers=1,
+            num_decoder_layers=gpt_num_layers,
         )
         
         self.output_size = gpt_output_size
@@ -90,17 +91,9 @@ class GraphGPT(nn.Module):
             token = visual_emb
             num_out_token = 1
             
-        # feed into gpt for causal modeling
-        output = self.gpt(token)
-        pred = output[:, -num_out_token:]
+        # feed into gpt for last token prediction
+        pred = self.gpt(token)
 
-        # Post-generation correction
-        if self.use_correction_model:
-            pred =  (
-                pred, 
-                self.correction(visual_emb, pred)
-            )
-            
         return pred
 
     def get_params_group(self, *args, **kwargs):

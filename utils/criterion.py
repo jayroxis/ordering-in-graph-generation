@@ -160,7 +160,7 @@ class LastTokenMatchLoss(nn.Module):
 
         # fill masked positions with large values
         dist[maksed_idx] = self.fill_value
-        
+
         min_dist = dist.min(-1).values
         loss = min_dist.mean()
         return loss

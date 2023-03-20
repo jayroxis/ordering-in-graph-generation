@@ -258,7 +258,7 @@ class GPT(nn.Module):
         return out[:, -1:]
     
     @torch.jit.ignore
-    def get_params_group(self, lr=2e-3, weight_decay=1e-4):
+    def get_params_group(self, lr=2e-4, weight_decay=1e-4):
         """
         Get the optimizer parameters for training the model.
 

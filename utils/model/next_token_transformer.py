@@ -10,6 +10,7 @@ class NextTokenTransformer(nn.Module):
         d_model, 
         nhead=8,
         dropout=0.0, 
+        pad_value=-1,
         num_encoder_layers=2,
         num_decoder_layers=4,
         **kwargs,
@@ -19,6 +20,7 @@ class NextTokenTransformer(nn.Module):
         self.d_model = d_model
         self.input_size = input_size
         self.output_size = output_size
+        self.pad_value = pad_value
 
         self.transformer = nn.Transformer(
             d_model=d_model, 
@@ -48,7 +50,7 @@ class NextTokenTransformer(nn.Module):
         next_token = self.next_token.repeat(len(token), 1, 1)
         
         # encoder-decoder
-        src_mask = (token == -1).all(-1)
+        src_mask = (token == self.pad_value).all(-1)
         emb = self.transformer(
             src=token, 
             tgt=next_token, 
@@ -58,3 +60,23 @@ class NextTokenTransformer(nn.Module):
         # output projection
         output = self.out_proj(emb)
         return output
+
+    @torch.jit.ignore
+    def get_params_group(self, lr=2e-4, weight_decay=1e-4):
+        """
+        Get the optimizer parameters for training the model.
+
+        Args:
+            lr (float): Learning rate for the optimizer. Defaults to 1e-3.
+                        weight_decay (float): Weight decay for the optimizer. 
+                        Defaults to 1e-4.
+
+        Returns:
+            list: A list of dictionaries, where each dictionary specifies 
+                  the parameters and optimizer settings for a different parameter group.
+        """
+        # define the parameter groups for the optimizer
+        params = [
+            {"params": self.parameters(), "lr": lr, "weight_decay": weight_decay},
+        ]
+        return params
