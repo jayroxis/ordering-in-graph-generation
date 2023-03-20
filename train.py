@@ -26,14 +26,7 @@ def parse_arguments():
 
     
 def get_dataloader(data_config):
-    latent_sort_encoder = data_config.get("latent_sort_encoder")
-    if latent_sort_encoder is not None:
-        dataset = LatentSortGraphDataset(
-            encoder=torch.jit.load(latent_sort_encoder),
-            **data_config
-        )
-    else:
-        dataset = RenderedPlanarGraphDataset(**data_config)
+    dataset = SpectralSortGraphDataset(**data_config)
     pad_value = data_config['pad_value']
     dataloader = DataLoader(
         dataset, 
@@ -216,6 +209,7 @@ for epoch in mb:
     # log to tensorboard
     if logging_config['log_to_tensorboard']:
         writer.add_scalar("Loss/train", avg_loss, epoch+1)
+        writer.add_scalar("LR", last_lr, epoch+1)
     
     # Save model checkpoint
     if logging_config['save_checkpoint'] and epoch % logging_config['save_interval'] == 0:

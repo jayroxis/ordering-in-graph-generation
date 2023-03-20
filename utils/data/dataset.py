@@ -1,10 +1,11 @@
 import torch
 import numpy as np
-from .planar_graph import PlanarGraph
-from .misc import *
 import torch.utils.data as data
 from torchvision import transforms
 
+from .planar_graph import PlanarGraph
+from .misc import *
+from .spectral import spectral_sort
 
 
 class RandomPlanarGraphDataset(data.Dataset):
@@ -230,4 +231,37 @@ class LatentSortGraphDataset(RenderedPlanarGraphDataset):
         emb = self.encoder(node_pair)
         sort_idx = emb.argsort(0).squeeze(1)
         node_pair = node_pair[sort_idx]
+        return img, node_pair
+
+
+
+
+class SpectralSortGraphDataset(RenderedPlanarGraphDataset):
+    """
+    Inherits from RenderedPlanarGraphDataset. This dataset class uses spectral
+    sort.
+
+    Args:
+        *args: Positional arguments to pass to the parent class constructor.
+        **kwargs: Keyword arguments to pass to the parent class constructor.
+
+        ```
+
+    """
+
+    @torch.no_grad()
+    def __getitem__(self, index):
+        """
+        Generate a rendered planar graph and corresponding node coordinate pairs for a
+        given index.
+
+        Args:
+            index (int): Index of the graph to generate.
+
+        Returns:
+            tuple: A tuple of the rendered image as a torch tensor and the node
+            coordinate pairs as a torch tensor.
+        """
+        img, node_pair = super().__getitem__(index)
+        node_pair = spectral_sort(node_pair)
         return img, node_pair

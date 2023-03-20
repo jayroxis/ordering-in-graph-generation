@@ -17,14 +17,7 @@ class DataModule(pl.LightningDataModule):
         self.train_loader = None
 
     def setup(self, stage: Optional[str] = None):
-        latent_sort_encoder = self.data_config.get("latent_sort_encoder")
-        if latent_sort_encoder is not None:
-            self.dataset = LatentSortGraphDataset(
-                encoder=torch.jit.load(latent_sort_encoder),
-                **self.data_config
-            )
-        else:
-            self.dataset = RenderedPlanarGraphDataset(**self.data_config)
+        self.dataset = SpectralSortGraphDataset(**self.data_config)
 
         train_size = int(len(self.dataset) * 0.8)
         valid_size = len(self.dataset) - train_size
