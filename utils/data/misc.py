@@ -256,8 +256,6 @@ def random_mask(node_pair, mask_prob=None):
     
     # Generate a random mask
     mask = torch.rand(node_pair.shape[0]) < mask_prob
-    while mask.all() or (~mask).all():
-        mask = torch.rand(node_pair.shape[0]) < mask_prob
         
     # Mask out the rows
     masked = node_pair[mask]

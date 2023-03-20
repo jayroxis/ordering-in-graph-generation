@@ -150,11 +150,17 @@ class LastTokenMatchLoss(nn.Module):
 
     def forward(self, pred, target):
         pred = pred[:, -1:]
-        unmaksed_idx = (target != self.pad_value).all(-1)
         elu_dist = torch.cdist(pred, target, p=2.0).squeeze(1)
         abs_dist = torch.cdist(pred, target, p=1.0).squeeze(1)
         dist = (elu_dist + abs_dist)
-        dist[~unmaksed_idx] = self.fill_value
+        maksed_idx = (target == self.pad_value).all(-1)
+
+        # if target has no edges left (all paddings)
+        maksed_idx[maksed_idx.all(-1), :] = False
+
+        # fill masked positions with large values
+        dist[maksed_idx] = self.fill_value
+        
         min_dist = dist.min(-1).values
         loss = min_dist.mean()
         return loss
