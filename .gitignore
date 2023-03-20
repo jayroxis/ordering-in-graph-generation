@@ -5,6 +5,7 @@
 # Ignore folders named "runs" and "archived"
 runs/
 archived/
+imgs/
 
 
 

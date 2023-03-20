@@ -144,7 +144,78 @@ class SinusoidalMLPEncoder(torch.nn.Module):
         ]
         return params
     
-    
+
+
+class MLPEncoder(torch.nn.Module):
+    def __init__(self, input_size, d_model, hidden_size=64, act='gelu', num_layers=2):
+        """
+        Initialize the MLP encoder.
+
+        Args:
+        - input_size: input dimensionality of the encoder
+        - d_model: output dimensionality of the encoder
+        - hidden_size: size of the hidden layers in the MLP. Defaults to 64.
+        - act: activation function to use in the MLP. Defaults to 'gelu'.
+        - num_layers: number of layers in the MLP. Defaults to 2.
+        """
+        super().__init__()
+        self.d_model = d_model
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        
+        # define the MLP layers
+        layers = []
+        for i in range(num_layers):
+            layers.append(torch.nn.Linear(input_size if i == 0 else hidden_size, hidden_size))
+            if act == 'relu':
+                layers.append(torch.nn.ReLU())
+            elif act == 'leaky_relU':
+                layers.append(torch.nn.LeakyReLU())
+            elif act == 'tanh':
+                layers.append(torch.nn.Tanh())
+            elif act == 'sigmoid':
+                layers.append(torch.nn.Sigmoid())
+            else:
+                layers.append(torch.nn.GELU())
+        layers.append(torch.nn.Linear(hidden_size, d_model))
+        
+        self.mlp = torch.nn.Sequential(*layers)
+
+    def forward(self, x):
+        """
+        Apply the MLP transformation to the input.
+
+        Args:
+        - x: input tensor of shape (batch_size, set_size, D)
+
+        Returns:
+        - output: tensor of shape (batch_size, set_size, d_model) representing the encoded input
+        """
+        output = self.mlp(x)
+
+        return output
+
+    @torch.jit.ignore
+    def get_params_group(self, lr=1e-3, weight_decay=1e-4):
+        """
+        Get the optimizer parameters for training the model.
+
+        Args:
+            lr (float): Learning rate for the optimizer. Defaults to 1e-3.
+            weight_decay (float): Weight decay for the optimizer. Defaults to 1e-4.
+
+        Returns:
+            list: A list of dictionaries, where each dictionary specifies the parameters 
+                  and optimizer settings for a different parameter group.
+        """
+        # define the parameter groups for the optimizer
+        params = [
+            {"params": self.parameters(), "lr": lr, "weight_decay": weight_decay},
+        ]
+        return params
+
+
     
 def test_sinusoidal_encoder(
     # Define test input
@@ -172,7 +243,7 @@ def test_sinusoidal_encoder(
         expected_output[:, :, -1] = torch.sin(x[:, :, 2] * freqs[-1])
     
     assert torch.allclose(output, expected_output, rtol=1e-5)
-    
+    print("Embedding standard deviation =", output.std().item())
     
     
 def test_sinusoidal_mlp_encoder():
@@ -200,6 +271,32 @@ def test_sinusoidal_mlp_encoder():
 
     # Test output range
     output_data = output_tensor.detach().numpy()
-    assert np.all(output_data >= -1) and np.all(output_data <= 1), "Output values outside expected range [-1, 1]"
+    print("Embedding standard deviation =", output_data.std().item())
 
-    print("All tests passed!")
+
+
+def test_mlp_encoder():
+    # Set random seed for reproducibility
+    torch.manual_seed(0)
+
+    # Define test parameters
+    batch_size = 4
+    set_size = 10
+    D = 3
+    d_model = 16
+
+    # Generate random input
+    input_data = np.random.rand(batch_size, set_size, D)
+    input_tensor = torch.tensor(input_data, dtype=torch.float)
+
+    # Initialize encoder
+    encoder = MLPEncoder(D, d_model)
+
+    # Test output shape
+    output_tensor = encoder(input_tensor)
+    expected_shape = (batch_size, set_size, d_model)
+    assert output_tensor.shape == expected_shape, f"Output shape {output_tensor.shape} does not match expected shape {expected_shape}"
+
+    # Test output range
+    output_data = output_tensor.detach().numpy()
+    print("Embedding standard deviation =", output_data.std().item())

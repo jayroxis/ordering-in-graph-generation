@@ -1,0 +1,39 @@
+data_config:
+  num_samples: 10000
+  img_size: 256
+  num_points: 15
+  epsilon: 0.1
+  tiny_angle: 1.2
+  batch_size: 100
+  num_workers: 16
+  pad_value: -1
+  shuffle: True
+  pin_memory: False
+  latent_sort_encoder: asset/mlp_latent_sorter.jit.pth
+  
+model_config:
+  embed_dim: 512
+  vis_enc_name: efficientnet_b0
+  gpt_output_size: 4
+  gpt_d_model: 512
+  gpt_num_layers: 8
+  max_freq: 10
+
+training_config:
+  epochs: 1000
+  warmup_epochs: 0.01
+  lr: 0.0002
+  weight_decay: 0.0
+  ema_decay: 0.995
+  div_factor: 25
+  final_div_factor: 1000
+  anneal_strategy: 'cos'
+  training_strategy: ddp_find_unused_parameters_false
+  
+logging_config:
+  log_to_file: True
+  log_file: "training.log"
+  log_to_tensorboard: True
+  save_interval: 50
+  save_checkpoint: true
+  checkpoint_file: "epoch_{epoch}.pth"
