@@ -18,7 +18,7 @@ model_config:
   gpt_d_model: 512
   gpt_num_layers: 8
   max_freq: 10
-  checkpoint: runs/lightning_logs/version_0/checkpoints/epoch=978-step=174262.ckpt
+  checkpoint: runs/lightning_logs/version_2/checkpoints/
   
 training_config:
   epochs: 1000
