@@ -35,12 +35,9 @@ def main():
 
     # Set up training strategy
     training_config = config['training_config']
-    epochs = int(training_config["epochs"])
-    total_steps = len(
+    training_config["steps_per_epoch"] = int(len(
         data_module.train_dataloader()
-    ) * epochs + 1
-    total_steps = int(total_steps / max(len(gpus) - 1, 1))
-    training_config["total_steps"] = total_steps
+    )) / max(len(gpus) - 1, 1) + 1
 
     # Create Model Module
     model_module = ModelModule(
