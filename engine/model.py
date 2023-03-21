@@ -1,4 +1,7 @@
+
+import os
 import torch
+from glob import glob
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import OneCycleLR
 from utils.model.graph_gpt import GraphGPT
@@ -18,26 +21,53 @@ class ModelModule(pl.LightningModule):
         self.__dict__.update(model_config)
 
         # load checkpoint if specified in model_config
-        checkpoint_path = model_config.get("checkpoint")
-        if checkpoint_path is not None:
-            print(f"Loading from '{checkpoint_path}'.")
-            if checkpoint_path.endswith(".pt") or checkpoint_path.endswith(".pth"):
-                print(self.model.load_state_dict(
-                    torch.load(checkpoint_path, map_location="cpu")
-                ))
-            elif checkpoint_path.endswith(".ckpt"):
-                checkpoint = torch.load(checkpoint_path, map_location="cpu")
-                state_dict = checkpoint["state_dict"]
-                state_dict = {k.replace("model.", ""): v for k, v in state_dict.items()}
-                print(self.model.load_state_dict(
-                    state_dict
-                ))
-            else:
-                print("Unsupported file extension for checkpoint.")
+        self.checkpoint_path = model_config.get("checkpoint")
+        if self.checkpoint_path is not None:
+            self.load_checkpoint(self.checkpoint_path)
 
         # correction model
         if "use_correction_model" not in model_config:
             self.use_correction_model = False
+
+    def load_checkpoint(self, checkpoint_path):
+        print(f"Loading from '{checkpoint_path}'.")
+        if checkpoint_path.endswith(".pt") or checkpoint_path.endswith(".pth"):
+            # PyTorch .pth or .pt file
+            print(self.model.load_state_dict(
+                torch.load(checkpoint_path, map_location="cpu")
+            ))
+        elif checkpoint_path.endswith(".ckpt"):
+            # PyTorch Lightning .ckpt file
+            checkpoint = torch.load(checkpoint_path, map_location="cpu")
+            state_dict = checkpoint["state_dict"]
+            state_dict = {k.replace("model.", ""): v for k, v in state_dict.items()}
+            print(self.model.load_state_dict(
+                state_dict
+            ))
+        elif os.path.isdir(checkpoint_path):
+            # Provided Path
+            ckpt = glob(os.path.join(checkpoint_path, "*.ckpt"))
+            pth = glob(os.path.join(checkpoint_path, "*.pth"))
+            pt = glob(os.path.join(checkpoint_path, "*.pt"))
+            if len(ckpt) > 0:
+                checkpoint = torch.load(ckpt[0], map_location="cpu")
+                state_dict = checkpoint["state_dict"]
+                state_dict = {k.replace("model.", ""): v for k, v in state_dict.items()}
+                print(self.model.load_state_dict(
+                    state_dict
+                ))  
+            elif len(pth) > 0:
+                print(self.model.load_state_dict(
+                    torch.load(pth[0], map_location="cpu")
+                ))  
+            elif len(pt) > 0:
+                print(self.model.load_state_dict(
+                    torch.load(pt[0], map_location="cpu")
+                ))  
+            else:
+                print(f"Unsupported file extension for checkpoint path {checkpoint_path}.")
+        else:
+            print(f"Unsupported file extension for checkpoint {checkpoint_path}.")
 
     def forward(self, img, node_pair):
         return self.model(img, node_pair)
@@ -65,7 +95,15 @@ class ModelModule(pl.LightningModule):
         last_lr = self.lr_schedulers().get_last_lr()[0]
         self.log('lr', last_lr)
         return super().training_step_end(step_output)
-
+    
+    def training_epoch_end(self, outputs):
+        reload_checkpoint = self.training_config.get("reload_checkpoint")
+        if reload_checkpoint is None:
+            reload_checkpoint = False
+        if reload_checkpoint:
+            self.load_checkpoint(self.checkpoint_path)
+        return super().training_epoch_end(outputs)
+    
     def configure_optimizers(self):
         lr = float(self.lr)
         weight_decay = float(self.weight_decay)
