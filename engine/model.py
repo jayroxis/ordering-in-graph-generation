@@ -116,7 +116,7 @@ class ModelModule(pl.LightningModule):
                     verbose=False
                 )
             except Exception as err:
-                print(f"Checkpoint reloading error:\n{err}")
+                print(f"Checkpoint loading failed. Error:\n{err}")
         return super().training_epoch_end(outputs)
     
     def configure_optimizers(self):
