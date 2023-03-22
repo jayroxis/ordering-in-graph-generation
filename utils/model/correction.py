@@ -1,6 +1,7 @@
 
 import torch
 import torch.nn as nn
+from .positional import MLPEncoder as PositionalEncoder
 
 
 class GraphTransformer(nn.Module):
@@ -34,7 +35,11 @@ class GraphTransformer(nn.Module):
             num_layers=num_layers
         )
 
-        self.in_proj = nn.Linear(input_size, d_model)
+        # Positional encoder
+        self.in_proj = PositionalEncoder(
+            d_model=d_model, 
+            input_size=input_size
+        )
         self.out_proj = nn.Linear(d_model, output_size)
 
     def forward(self, vis_emb, node_pair):

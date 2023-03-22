@@ -4,7 +4,7 @@ import torch.nn as nn
 from .gpt import GPT
 from .visual import VisualEncoder
 from .correction import GraphTransformer
-from .positional import SinusoidalMLPEncoder as PositionalEncoder
+from .positional import MLPEncoder as PositionalEncoder
 
 
 
@@ -32,8 +32,10 @@ class GraphGPT(nn.Module):
 
         # Positional encoder
         self.pos_enc = PositionalEncoder(
-            d_model=embed_dim, 
-            max_freq=max_freq
+            # d_model=embed_dim, 
+            # max_freq=max_freq
+            input_size=gpt_output_size, 
+            d_model=embed_dim
         )
 
         # GPT backbone
@@ -44,6 +46,7 @@ class GraphGPT(nn.Module):
             num_layers=gpt_num_layers
         )
         
+        self.max_freq = max_freq
         self.output_size = gpt_output_size
         self.d_model = gpt_d_model
         self.use_correction_model = use_correction_model
@@ -60,7 +63,8 @@ class GraphGPT(nn.Module):
             input_size=self.output_size, 
             output_size=self.output_size, 
             d_model=self.d_model, 
-            num_layers=3
+            num_layers=3,
+            max_freq=self.max_freq,
         )
 
     def forward(self, img, node_pair=None):
@@ -98,7 +102,7 @@ class GraphGPT(nn.Module):
         if self.use_correction_model:
             pred =  (
                 pred, 
-                self.correction(visual_emb, pred)
+                self._make_correction(visual_emb, pred)
             )
             
         return pred
@@ -185,8 +189,19 @@ class GraphGPT(nn.Module):
         
         # Post-generation correction
         if self.use_correction_model:
-            output_seq = self.correction(visual_emb, output_seq)
+            output_seq = self._make_correction(visual_emb, output_seq)
         return output_seq
+
+    def _make_correction(self, visual_emb=None, output_seq=None):
+        if visual_emb is not None:
+            self.visual_emb = visual_emb.detach()
+        if output_seq is not None:
+            self.output_seq = output_seq.detach()
+        self.output_seq = self.output_seq + self.correction(
+            self.visual_emb, 
+            self.output_seq
+        )
+        return self.output_seq
     
     @torch.no_grad()
     def predict(self, img, seq_len=1000):

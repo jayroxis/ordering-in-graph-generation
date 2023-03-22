@@ -37,7 +37,7 @@ def main():
     training_config = config['training_config']
     training_config["steps_per_epoch"] = int(len(
         data_module.train_dataloader()
-    )) / max(len(gpus) - 1, 1) + 1
+    ) / max(len(gpus) - 1, 1) * 1.2) + 1
 
     # Create Model Module
     model_module = ModelModule(

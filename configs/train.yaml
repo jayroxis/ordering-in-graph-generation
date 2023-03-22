@@ -1,10 +1,10 @@
 data_config:
-  num_samples: 5000
+  num_samples: 40000
   img_size: 256
   num_points: 15
   epsilon: 0.1
   tiny_angle: 1.2
-  batch_size: 100
+  batch_size: 200
   num_workers: 8
   pad_value: -1
   shuffle: True
@@ -18,21 +18,19 @@ model_config:
   gpt_d_model: 512
   gpt_num_layers: 8
   max_freq: 10
-  checkpoint: runs/lightning_logs/version_1/checkpoints/
-  strict: True
-  use_correction_model: True
-  
+  # checkpoint: runs/lightning_logs/version_0/checkpoints/
+  # strict: True
+
 training_config:
   epochs: 1000
-  warmup_epochs: 0.000
-  lr: 0.00002
+  warmup_epochs: 0.01
+  lr: 0.0002
   weight_decay: 0.0
   ema_decay: 0.995
   div_factor: 25
   final_div_factor: 1000
   anneal_strategy: 'cos'
   training_strategy: ddp_find_unused_parameters_false
-  reload_checkpoint: runs/lightning_logs/version_3/checkpoints/
 
 logging_config:
   log_to_file: True
