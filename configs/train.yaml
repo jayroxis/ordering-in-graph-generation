@@ -9,7 +9,7 @@ data_config:
   pad_value: -1
   shuffle: True
   pin_memory: False
-  latent_sort_encoder: asset/mlp_latent_sorter_plus.jit.pth
+  latent_sort_encoder: asset/mlp_latent_sorter.jit.pth
   
 model_config:
   embed_dim: 512
@@ -17,7 +17,7 @@ model_config:
   gpt_output_size: 4
   gpt_d_model: 512
   gpt_num_layers: 8
-  max_freq: 10
+  # max_freq: 10
   # checkpoint: runs/lightning_logs/version_0/checkpoints/
   # strict: True
 
