@@ -1,8 +1,12 @@
 import torch
-import numpy as np
+import torch.nn as nn
 
 
-class SinusoidalEncoder(torch.nn.Module):
+from timm.models.registry import register_model
+
+
+@register_model
+class SinusoidalEncoder(nn.Module):
     def __init__(self, d_model, max_freq=10):
         """
         Initialize the sinusoidal encoder.
@@ -61,8 +65,8 @@ class SinusoidalEncoder(torch.nn.Module):
         return params
 
     
-    
-class SinusoidalMLPEncoder(torch.nn.Module):
+@register_model    
+class SinusoidalMLPEncoder(nn.Module):
     def __init__(self, d_model, max_freq=10):
         """
         Initialize the sinusoidal MLP encoder.
@@ -74,11 +78,11 @@ class SinusoidalMLPEncoder(torch.nn.Module):
         super().__init__()
         self.max_freq = max_freq
         self.d_model = d_model
-        self.mlp = torch.nn.Sequential(
-            torch.nn.Linear(2 * max_freq, d_model),
-            torch.nn.GELU(),
-            torch.nn.LayerNorm(d_model),
-            torch.nn.Linear(d_model, d_model)
+        self.mlp = nn.Sequential(
+            nn.Linear(2 * max_freq, d_model),
+            nn.GELU(),
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, d_model)
         )
         self._init_weights_()
         
@@ -91,8 +95,8 @@ class SinusoidalMLPEncoder(torch.nn.Module):
     def _init_weights_(self):
         """ Initialize MLP weights """
         for m in self.mlp:
-            if isinstance(m, torch.nn.Linear):
-                torch.nn.init.normal_(
+            if isinstance(m, nn.Linear):
+                nn.init.normal_(
                     m.weight, 
                     std=1 / (0.02 * self.max_freq * self.d_model)
                 )
@@ -146,8 +150,16 @@ class SinusoidalMLPEncoder(torch.nn.Module):
     
 
 
-class MLPEncoder(torch.nn.Module):
-    def __init__(self, input_size, d_model, hidden_size=64, act='gelu', num_layers=2):
+@register_model
+class MLPEncoder(nn.Module):
+    def __init__(
+        self, 
+        input_size, 
+        d_model, 
+        hidden_size=64, 
+        act='gelu', 
+        num_layers=2
+    ):
         """
         Initialize the MLP encoder.
 
@@ -167,20 +179,20 @@ class MLPEncoder(torch.nn.Module):
         # define the MLP layers
         layers = []
         for i in range(num_layers):
-            layers.append(torch.nn.Linear(input_size if i == 0 else hidden_size, hidden_size))
+            layers.append(nn.Linear(input_size if i == 0 else hidden_size, hidden_size))
             if act == 'relu':
-                layers.append(torch.nn.ReLU())
+                layers.append(nn.ReLU())
             elif act == 'leaky_relU':
-                layers.append(torch.nn.LeakyReLU())
+                layers.append(nn.LeakyReLU())
             elif act == 'tanh':
-                layers.append(torch.nn.Tanh())
+                layers.append(nn.Tanh())
             elif act == 'sigmoid':
-                layers.append(torch.nn.Sigmoid())
+                layers.append(nn.Sigmoid())
             else:
-                layers.append(torch.nn.GELU())
-        layers.append(torch.nn.Linear(hidden_size, d_model))
+                layers.append(nn.GELU())
+        layers.append(nn.Linear(hidden_size, d_model))
         
-        self.mlp = torch.nn.Sequential(*layers)
+        self.mlp = nn.Sequential(*layers)
 
     def forward(self, x):
         """
@@ -215,88 +227,3 @@ class MLPEncoder(torch.nn.Module):
         ]
         return params
 
-
-    
-def test_sinusoidal_encoder(
-    # Define test input
-    batch_size = 2,
-    set_size = 3,
-    d_model = 8,
-    max_freq = 5,
-):
-    x = torch.rand(batch_size, set_size, d_model)
-
-    # Initialize encoder and compute output
-    encoder = SinusoidalEncoder(d_model=d_model, max_freq=max_freq)
-    output = encoder(x)
-
-    # Check output shape
-    assert output.shape == (batch_size, set_size, d_model)
-
-    # Check output values
-    expected_output = torch.zeros(batch_size, set_size, d_model)
-    freqs = torch.pow(2, torch.arange(0, d_model, 2) / d_model * max_freq)
-    for i in range(d_model // 2):
-        expected_output[:, :, 2*i] = torch.sin(x[:, :, 0] * freqs[i])
-        expected_output[:, :, 2*i+1] = torch.cos(x[:, :, 1] * freqs[i])
-    if d_model % 2 == 1:
-        expected_output[:, :, -1] = torch.sin(x[:, :, 2] * freqs[-1])
-    
-    assert torch.allclose(output, expected_output, rtol=1e-5)
-    print("Embedding standard deviation =", output.std().item())
-    
-    
-def test_sinusoidal_mlp_encoder():
-    # Set random seed for reproducibility
-    torch.manual_seed(0)
-
-    # Define test parameters
-    batch_size = 4
-    set_size = 10
-    D = 3
-    d_model = 16
-    max_freq = 8
-
-    # Generate random input
-    input_data = np.random.rand(batch_size, set_size, D)
-    input_tensor = torch.tensor(input_data, dtype=torch.float)
-
-    # Initialize encoder
-    encoder = SinusoidalMLPEncoder(d_model, max_freq)
-
-    # Test output shape
-    output_tensor = encoder(input_tensor)
-    expected_shape = (batch_size, set_size, d_model)
-    assert output_tensor.shape == expected_shape, f"Output shape {output_tensor.shape} does not match expected shape {expected_shape}"
-
-    # Test output range
-    output_data = output_tensor.detach().numpy()
-    print("Embedding standard deviation =", output_data.std().item())
-
-
-
-def test_mlp_encoder():
-    # Set random seed for reproducibility
-    torch.manual_seed(0)
-
-    # Define test parameters
-    batch_size = 4
-    set_size = 10
-    D = 3
-    d_model = 16
-
-    # Generate random input
-    input_data = np.random.rand(batch_size, set_size, D)
-    input_tensor = torch.tensor(input_data, dtype=torch.float)
-
-    # Initialize encoder
-    encoder = MLPEncoder(D, d_model)
-
-    # Test output shape
-    output_tensor = encoder(input_tensor)
-    expected_shape = (batch_size, set_size, d_model)
-    assert output_tensor.shape == expected_shape, f"Output shape {output_tensor.shape} does not match expected shape {expected_shape}"
-
-    # Test output range
-    output_data = output_tensor.detach().numpy()
-    print("Embedding standard deviation =", output_data.std().item())

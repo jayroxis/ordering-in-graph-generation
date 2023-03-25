@@ -1,12 +1,189 @@
+
+
+#   This file contains some GPT style models
+#   and various presets.
+
+
 import torch
 import torch.nn as nn
-from .layerscale import LayerScale
+
+from .modules import *
+from .misc import build_module_registry
 
 
-# alias for causal mask
-casual_mask = nn.Transformer.generate_square_subsequent_mask
+from timm.models.registry import register_model
 
 
+# Custom GPT with maximum flexibility
+@register_model
+def custom_gpt(
+    *args, **kwargs
+):
+    return GPT(*args, **kwargs)
+
+
+# GPT-Tiny Presets
+@register_model
+def gpt_tiny(
+    input_size: int, 
+    output_size: int, 
+    dropout: float = 0.0, 
+    attn_drop: float = 0.0,
+    **kwargs
+):
+    model = GPT(
+        input_size=input_size, 
+        output_size=output_size, 
+        d_model=256, 
+        nhead=8, 
+        dropout=dropout, 
+        attn_drop=attn_drop,
+        ff_dim=512,
+        num_layers=3,
+    )
+    return model
+
+
+# GPT-Small Presets
+@register_model
+def gpt_small(
+    input_size: int, 
+    output_size: int, 
+    dropout: float = 0.0, 
+    attn_drop: float = 0.0,
+    **kwargs
+):
+    model = GPT(
+        input_size=input_size, 
+        output_size=output_size, 
+        d_model=384, 
+        nhead=8, 
+        dropout=dropout, 
+        attn_drop=attn_drop,
+        ff_dim=768,
+        num_layers=4,
+    )
+    return model
+
+
+
+# GPT-Medium Presets
+@register_model
+def gpt_medium(
+    input_size: int, 
+    output_size: int, 
+    dropout: float = 0.0, 
+    attn_drop: float = 0.0,
+    **kwargs
+):
+    model = GPT(
+        input_size=input_size, 
+        output_size=output_size, 
+        d_model=384, 
+        nhead=8, 
+        dropout=dropout, 
+        attn_drop=attn_drop,
+        ff_dim=768,
+        num_layers=6,
+    )
+    return model
+
+
+# GPT-Large Presets
+@register_model
+def gpt_large(
+    input_size: int, 
+    output_size: int, 
+    dropout: float = 0.0, 
+    attn_drop: float = 0.0,
+    **kwargs
+):
+    model = GPT(
+        input_size=input_size, 
+        output_size=output_size, 
+        d_model=512, 
+        nhead=8, 
+        dropout=dropout, 
+        attn_drop=attn_drop,
+        ff_dim=1024,
+        num_layers=6,
+    )
+    return model
+
+
+# GPT-XLarge Presets
+@register_model
+def gpt_extra_large(
+    input_size: int, 
+    output_size: int, 
+    dropout: float = 0.0, 
+    attn_drop: float = 0.0,
+    **kwargs
+):
+    model = GPT(
+        input_size=input_size, 
+        output_size=output_size, 
+        d_model=768, 
+        nhead=8, 
+        dropout=dropout, 
+        attn_drop=attn_drop,
+        ff_dim=1536,
+        num_layers=8,
+    )
+    return model
+
+
+# GPT-Huge Presets
+@register_model
+def gpt_huge(
+    input_size: int, 
+    output_size: int, 
+    dropout: float = 0.0, 
+    attn_drop: float = 0.0,
+    **kwargs
+):
+    model = GPT(
+        input_size=input_size, 
+        output_size=output_size, 
+        d_model=1024, 
+        nhead=16, 
+        dropout=dropout, 
+        attn_drop=attn_drop,
+        ff_dim=2048,
+        num_layers=8,
+    )
+    return model
+
+
+
+# Models and Modules
+
+_default_cfg = {
+    "layerscale": {
+        "class": "LayerScale",
+    },
+    "ff_layer": {
+        "class": "nn.Linear",
+    },
+    "activation": {
+        "class": "nn.GELU",
+    },
+    "dropout": {
+        "class": "nn.Dropout",
+    },
+    "layernorm": {
+        "class": "nn.LayerNorm",
+    },
+    "multihead_attn": {
+        "class": "nn.MultiheadAttention",
+        "params": {
+            "batch_first": True,
+        }
+    },
+    "attn_mask": {
+        "class": "CasualAttentionMask",
+    },
+}
 
 
 class DecoderLayer(nn.Module):
@@ -15,7 +192,15 @@ class DecoderLayer(nn.Module):
     and feedforward layers.
     """
 
-    def __init__(self, d_model, nhead=8, dropout=0.0, batch_first=True):
+    def __init__(
+            self, 
+            d_model, 
+            nhead: int = 8, 
+            dropout: float = 0.0, 
+            ff_dim: int = None,
+            module_config: dict = {},
+            **kwargs,
+        ):
         """
         Initializes the DecoderLayer.
 
@@ -24,29 +209,43 @@ class DecoderLayer(nn.Module):
         - nhead (int): The number of heads in the multi-head attention layer. 
           Default: 8.
         - dropout (float): The dropout rate to apply. Default: 0.1.
-        - batch_first (bool): If True, expects the batch size to be the 
-          first dimension of input tensors. Default: True.
         """
         super(DecoderLayer, self).__init__()
+        
+        # register variables
+        self.d_model = d_model
+        if ff_dim is None:
+            ff_dim = 2 * d_model
+            self.ff_dim = ff_dim
+            
+        # init module registry
+        self.module_registry = build_module_registry(
+            config=module_config,
+            default_cfg=_default_cfg,
+        )
+        LayerScale = self.module_registry["layerscale"]
+        FeedForwardLayer = self.module_registry["ff_layer"]
+        Activation = self.module_registry["activation"]
+        Dropout = self.module_registry["dropout"]
+        LayerNorm = self.module_registry["layernorm"]
+        MultiheadAttention = self.module_registry["multihead_attn"]
 
         # self-attention layer
-        self.self_attn = nn.MultiheadAttention(
-            d_model, nhead, batch_first=batch_first
-        )
-        self.norm1 = nn.LayerNorm(d_model)
+        self.self_attn = MultiheadAttention(d_model, nhead)
+        self.norm1 = LayerNorm(d_model)
         self.scale1 = LayerScale(d_model)
 
         # feedforward layer
         self.ff = nn.Sequential(
-            nn.Linear(d_model, 2 * d_model),
-            nn.GELU(),
-            nn.Linear(2 * d_model, d_model),
-            nn.Dropout(dropout),
+            FeedForwardLayer(d_model, ff_dim),
+            Activation(),
+            FeedForwardLayer(ff_dim, d_model),
+            Dropout(dropout),
         )
-        self.norm2 = nn.LayerNorm(d_model)
+        self.norm2 = LayerNorm(d_model)
         self.scale2 = LayerScale(d_model)
 
-    def forward(self, x, mask=None):
+    def forward(self, x, mask=None, target=None):
         """
         Passes the input through the DecoderLayer.
 
@@ -60,11 +259,15 @@ class DecoderLayer(nn.Module):
         - torch.Tensor: The output tensor of shape 
           (batch_size, sequence_length, d_model).
         """
+        # if no target, then do self-attention
+        if target is None:
+            target = x
+
         # self attention
-        residual = x
+        residual = target
         x = self.norm1(x)
-        x = x + self.scale1(
-            self.self_attn(x, x, x, attn_mask=mask)[0]
+        x = target + self.scale1(
+            self.self_attn(target, x, x, attn_mask=mask)[0]
         )
 
         # feedforward
@@ -89,49 +292,59 @@ class DecoderLayer(nn.Module):
         - torch.Tensor: The output tensor of shape 
           (batch_size, sequence_length, d_model).
         """
-        # self attention
-        residual = x[:, -1:]
-        
-        x = self.norm1(x)
-        x = x[:, -1:] + self.scale1(
-            self.self_attn(x[:, -1:], x, x, attn_mask=mask)[0]
-        )
-
-        # feedforward
-        x = self.norm2(x)
-        x = x + self.scale2(self.ff(x))
-
-        # residual connection
-        x = x + residual
-        return x
-
+        return self.forward(x=x, mask=mask, target=x[:, -1:])
 
 
     
 class GPT(nn.Module):
     """
-    The GPT Float model.
+    The GPT model with compatibility to float output for regression.
     """
-
-    def __init__(self, output_size, input_size, d_model, num_layers):
+    def __init__(
+            self, 
+            output_size: int, 
+            input_size: int, 
+            d_model: int = 512, 
+            nhead: int = 8, 
+            dropout: float = 0.0, 
+            attn_drop: float = 0.0,
+            ff_dim: int = None,
+            num_layers: int = 3,
+            module_config: dict = {},
+            **kwargs,
+    ):
         """
-        Initializes the GPT Float model.
-
-        Args:
-        - output_size (int): The size of the vocabulary.
-        - input_size (int): The size of the embedding layer.
-        - d_model (int): The number of hidden units in each layer.
-        - num_layers (int): The number of layers in the decoder.
+        Initializes the GPT model.
         """
         super(GPT, self).__init__()
 
+        # init module registry
+        self.module_registry = build_module_registry(
+            config=module_config,
+            default_cfg=_default_cfg,
+        )
+        FeedForwardLayer = self.module_registry["ff_layer"]
+        Activation = self.module_registry["activation"]
+        LayerNorm = self.module_registry["layernorm"]
+        AttentionMask = self.module_registry["attn_mask"]
+
         # embedding layer
-        self.embedding = nn.Linear(input_size, d_model)
+        self.embedding = FeedForwardLayer(input_size, d_model)
+
+        # attention mask
+        self.attn_mask = AttentionMask(dropout=attn_drop)
 
         # decoder layers
+        decoder_config = module_config.get("decoder_layer", {})
         self.decoder = nn.ModuleList(
             [
-                DecoderLayer(d_model, batch_first=True)
+                DecoderLayer(
+                    d_model=d_model,
+                    nhead=nhead,
+                    dropout=dropout,
+                    ff_dim=ff_dim,
+                    module_config=decoder_config,
+                )
                 for _ in range(num_layers)
             ]
         )
@@ -139,15 +352,19 @@ class GPT(nn.Module):
         
         # output layer
         self.fc = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.GELU(),
-            nn.Linear(d_model, output_size),
+            FeedForwardLayer(d_model, d_model),
+            Activation(),
+            FeedForwardLayer(d_model, output_size),
         )
-        self.norm = nn.LayerNorm(d_model)
+        self.norm = LayerNorm(d_model)
+
+        # initialize buffer for efficient inference
         self._init_buffer_()
     
     def _init_buffer_(self):
-        """ Initialize buffer for efficient next token prediction. """
+        """ 
+        Initialize buffer for efficient next token prediction. 
+        """
         self.buffer = [None for _ in range(self.num_layers + 3)]
     
     def forward(self, x):
@@ -165,8 +382,8 @@ class GPT(nn.Module):
         # embedding layer
         out = self.embedding(x)
 
-        # self attention mask
-        attn_mask = casual_mask(x.size(1)).to(x.device)
+        # generate attention mask
+        attn_mask = self.attn_mask(x.size(1))
 
         # decoder blocks
         for block in self.decoder:
@@ -229,7 +446,7 @@ class GPT(nn.Module):
         )
         
         # self attention mask
-        attn_mask = casual_mask(out.size(1)).to(out.device)
+        attn_mask = self.attn_mask(x.size(1))
 
         # decoder blocks
         for i, block in enumerate(self.decoder):
@@ -277,3 +494,4 @@ class GPT(nn.Module):
         ]
         return params
    
+

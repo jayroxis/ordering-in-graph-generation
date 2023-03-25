@@ -316,3 +316,59 @@ def create_gif_from_images(img_dir: str = "imgs/",
         for filename in img_filenames_sorted:
             if filename != output_filename[:-4] + ".png":
                 os.remove(filename)
+
+
+
+def count_parameters(model, verbose=True):
+    """
+    Count and print the number of trainable parameters of a PyTorch model.
+
+    Args:
+        model (nn.Module): The PyTorch model to count the parameters of.
+        verbose (bool): Whether to print the number of trainable parameters.
+
+    Returns:
+        int: The total number of trainable parameters in the model.
+    """
+    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    num_params_str = human_format(num_params)
+
+    if verbose:
+        print(f"Parameters in `{type(model).__name__}`: \t {num_params:,}")
+
+        table = [
+            ['Trainable Parameters', num_params_str],
+            ['Untrainable Parameters', human_format(
+                sum(p.numel() for p in model.parameters() if not p.requires_grad)
+            )],
+            ['Total Parameters', human_format(
+                sum(p.numel() for p in model.parameters())
+            )]
+        ]
+
+        print("\nModel Parameters".center(60))
+        print("-" * 60)
+
+        for row in table:
+            print(f"{row[0]:<30} | {row[1]:>15}")
+
+    return num_params
+
+
+
+def human_format(num, suffix=''):
+    """
+    Convert a number to a human-readable string with a suffix (K, M, G).
+
+    Args:
+        num (int): The number to convert.
+        suffix (str): The suffix to use. Defaults to 'B'.
+
+    Returns:
+        str: A human-readable string representation of the number with the specified suffix.
+    """
+    for unit in [' ', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
+        if abs(num) < 1024.0:
+            return f"{num:.2f} {unit}{suffix}"
+        num /= 1024.0
+    return f"{num:.2f} Y{suffix}"
