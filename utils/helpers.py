@@ -334,7 +334,7 @@ def count_parameters(model, verbose=True):
     num_params_str = human_format(num_params)
 
     if verbose:
-        print(f"Parameters in `{type(model).__name__}`: \t {num_params:,}")
+        header = f"Parameters in {type(model).__name__}: {num_params:,}"
 
         table = [
             ['Trainable Parameters', num_params_str],
@@ -346,11 +346,13 @@ def count_parameters(model, verbose=True):
             )]
         ]
 
-        print("\nModel Parameters".center(60))
+        print("\n" + "-" * 60)
+        print(header.center(59))
         print("-" * 60)
 
         for row in table:
             print(f"{row[0]:<30} | {row[1]:>15}")
+        print("-" * 60 + "\n")
 
     return num_params
 
@@ -368,7 +370,7 @@ def human_format(num, suffix=''):
         str: A human-readable string representation of the number with the specified suffix.
     """
     for unit in [' ', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
-        if abs(num) < 1024.0:
+        if abs(num) < 1000.0:
             return f"{num:.2f} {unit}{suffix}"
-        num /= 1024.0
+        num /= 1000.0
     return f"{num:.2f} Y{suffix}"
