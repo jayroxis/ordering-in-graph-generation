@@ -2,14 +2,17 @@
 import functools
 from copy import deepcopy
 
-import timm
+from timm import create_model
 import timm.models.registry as registry
 
+import torch.nn as nn
+from .modules import *
+from .positional import *
 
 
-def build_model(model_name: str, default_model: str = "", **kwargs):
+def build_model(model_name: str, default_model: str = "", *args, **kwargs):
     """
-    Safe build a model from timm registry.
+    Safely build a model from timm registry.
     """
     # If given model_name not in timm registry, use default name
     if model_name not in registry._model_entrypoints:
@@ -24,7 +27,7 @@ def build_model(model_name: str, default_model: str = "", **kwargs):
         else:
             model_name = default_model
 
-    model_name = timm.create_model(model_name=model_name, **kwargs)
+    model_name = create_model(model_name, *args, **kwargs)
     return model_name
 
 
@@ -41,47 +44,49 @@ def build_partial_class(config):
 
     assert "class" in config, "The input config should be a key \"class\"."
     params = config.get("params", {})
-    partial_class = functools.partial(eval(config["class"]), **params)
+    model_class = eval(config["class"])
+    partial_class = functools.partial(model_class, **params)
     return partial_class
 
 
 
 def build_module_registry(config: dict, default_cfg: dict = {}):
-        """
-        Build module registry from a config dictionary.
-        Note: it works for Python >= 3.8
+    """
+    Build module registry from a config dictionary.
+    Note: it works for Python >= 3.8
 
-        Args:
-            config (dict): it should have the following structure:
-            ```
-            config = {
-                "module1": {
-                    "class1": ModuleClass1,
-                    "params1": {
-                        "param1": ***,
-                        "param2": ***,
-                        ...
-                    },
+    Args:
+        config (dict): it should have the following structure:
+        ```
+        config = {
+            "module1": {
+                "class1": ModuleClass1,
+                "params1": {
+                    "param1": ***,
+                    "param2": ***,
+                    ...
                 },
-                "module2": {
-                    "class2": ModuleClass2,
-                    "params2": {
-                        "param1": ***,
-                        ...
-                    },
+            },
+            "module2": {
+                "class2": ModuleClass2,
+                "params2": {
+                    "param1": ***,
+                    ...
                 },
-            }
-            ```
-            The `params` can be left empty of partially given.
+            },
+        }
+        ```
+        The `params` can be left empty of partially given.
 
-        Returns:
-            It returns the module registry which contains a dict
-            of partial classes.
-        """
-        # module registry
-        module_registry = {}
-        config = deepcopy(default_cfg).update(config)
-        for module_name, module_cfg in config.items():
-            module_class = build_partial_class(module_cfg)
-            module_registry[module_name] = module_class
-        return module_registry
+    Returns:
+        It returns the module registry which contains a dict
+        of partial classes.
+    """
+    # module registry
+    module_registry = {}
+    model_cfg = deepcopy(default_cfg)
+    model_cfg.update(config)
+    for name, cfg in model_cfg.items():
+        module_class = build_partial_class(cfg)
+        module_registry[name] = module_class
+    return module_registry

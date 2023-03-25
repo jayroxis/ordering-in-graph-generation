@@ -1,18 +1,16 @@
-import math
+
 import torch
 import torch.nn as nn
-import timm
+from .misc import build_model
 
 
 class VisualEncoder(nn.Module):
     def __init__(
         self, 
         model_name: str = "efficientnet_b0", 
+        in_chans: int = 3,
         img_size: int = 256, 
         embed_dim: int = 256, 
-        num_heads: int = 8, 
-        dropout: float = 0.0,
-        num_enc_layer = 1,
     ):
         """
         Initialize the visual encoder.
@@ -25,8 +23,8 @@ class VisualEncoder(nn.Module):
             dropout (float, optional): The dropout rate for the transformer layer. Defaults to 0.1.
         """
         super(VisualEncoder, self).__init__()
-        self.encoder = timm.create_model(model_name, num_classes=0)
-        self.output_channels = self.encoder.num_features
+
+        self.encoder = build_model(model_name, in_chans=in_chans, num_classes=0)
         self.img_size = img_size
 
         # calculate the number of visual tokens
@@ -36,6 +34,8 @@ class VisualEncoder(nn.Module):
             features = features.permute(0, 2, 3, 1)
             features = features.contiguous()
             num_tokens = features.size(1) * features.size(2)
+
+        self.output_channels = features.size(-1)
         self.num_tokens = num_tokens
 
         # initialize the positional embeddings:
@@ -48,18 +48,10 @@ class VisualEncoder(nn.Module):
             ) * 0.02
         )
         
-        self.fc = nn.Linear(self.output_channels, embed_dim)
-        self.transformer_encoder = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(
-                d_model=embed_dim,
-                dim_feedforward=embed_dim*2,
-                nhead=num_heads,
-                dropout=dropout,
-                activation="gelu",
-                batch_first=True,
-                norm_first=True
-            ),
-            num_layers=num_enc_layer,
+        self.fc = nn.Sequential(
+            nn.Linear(self.output_channels, 2 * embed_dim),
+            nn.GELU(),
+            nn.Linear(2 * embed_dim, embed_dim),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -78,7 +70,6 @@ class VisualEncoder(nn.Module):
         tokens = features.view(features.size(0), -1, self.output_channels)
         tokens = tokens + self.positional_embeddings
         tokens = self.fc(tokens)
-        tokens = self.transformer_encoder(tokens)
         return tokens
     
     @torch.jit.ignore
@@ -96,8 +87,8 @@ class VisualEncoder(nn.Module):
         """
         # define the parameter groups for the optimizer
         params = [
-            {"params": self.transformer_encoder.parameters(), "lr": lr, "weight_decay": weight_decay},
             {"params": self.encoder.parameters(), "lr": lr, "weight_decay": weight_decay},
             {"params": self.positional_embeddings, "lr": lr, "weight_decay": 0},
         ]
         return params
+    

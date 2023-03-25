@@ -1,9 +1,7 @@
 import torch
 import torch.nn as nn
-from .gpt import GPT
-from .visual import VisualEncoder
-from .positional import SinusoidalMLPEncoder as PositionalEncoder
 
+from .misc import build_model
 
 
 class GraphGPT(nn.Module):
@@ -21,6 +19,7 @@ class GraphGPT(nn.Module):
         super().__init__()
 
         # Visual encoder
+        self.vis_enc = build_model()
         self.vis_enc = VisualEncoder(
             vis_enc_name, 
             img_size=img_size, 
@@ -99,7 +98,8 @@ class GraphGPT(nn.Module):
         self, img, 
         seq_len=100, 
         stop_token_value=-1.0, 
-        stop_threshold=1e-2
+        stop_threshold=0.5,
+        **kwargs,
     ):
         """
         Perform iterative forward pass through the model.
@@ -139,7 +139,7 @@ class GraphGPT(nn.Module):
         return output_seq
     
     @torch.no_grad()
-    def predict(self, img, seq_len=100):
+    def predict(self, img, seq_len=100, **kwargs):
         """
         Predict a sequence of tokens for a given input image.
 
@@ -153,6 +153,5 @@ class GraphGPT(nn.Module):
         return self.iterative_forward(
             img=img, 
             seq_len=seq_len, 
-            stop_token_value=-1.0, 
-            stop_threshold=1e-2
+            **kwargs,
         )

@@ -7,10 +7,7 @@
 import torch
 import torch.nn as nn
 
-from .modules import *
 from .misc import build_module_registry
-
-
 from timm.models.registry import register_model
 
 
@@ -20,6 +17,28 @@ def custom_gpt(
     *args, **kwargs
 ):
     return GPT(*args, **kwargs)
+
+
+# GPT-Nano Presets
+@register_model
+def gpt_nano(
+    input_size: int, 
+    output_size: int, 
+    dropout: float = 0.0, 
+    attn_drop: float = 0.0,
+    **kwargs
+):
+    model = GPT(
+        input_size=input_size, 
+        output_size=output_size, 
+        d_model=192, 
+        nhead=8, 
+        dropout=dropout, 
+        attn_drop=attn_drop,
+        ff_dim=384,
+        num_layers=3,
+    )
+    return model
 
 
 # GPT-Tiny Presets
@@ -39,7 +58,7 @@ def gpt_tiny(
         dropout=dropout, 
         attn_drop=attn_drop,
         ff_dim=512,
-        num_layers=3,
+        num_layers=6,
     )
     return model
 
@@ -61,7 +80,7 @@ def gpt_small(
         dropout=dropout, 
         attn_drop=attn_drop,
         ff_dim=768,
-        num_layers=4,
+        num_layers=6,
     )
     return model
 
@@ -79,12 +98,12 @@ def gpt_medium(
     model = GPT(
         input_size=input_size, 
         output_size=output_size, 
-        d_model=384, 
+        d_model=512, 
         nhead=8, 
         dropout=dropout, 
         attn_drop=attn_drop,
-        ff_dim=768,
-        num_layers=6,
+        ff_dim=1024,
+        num_layers=8,
     )
     return model
 
@@ -92,28 +111,6 @@ def gpt_medium(
 # GPT-Large Presets
 @register_model
 def gpt_large(
-    input_size: int, 
-    output_size: int, 
-    dropout: float = 0.0, 
-    attn_drop: float = 0.0,
-    **kwargs
-):
-    model = GPT(
-        input_size=input_size, 
-        output_size=output_size, 
-        d_model=512, 
-        nhead=8, 
-        dropout=dropout, 
-        attn_drop=attn_drop,
-        ff_dim=1024,
-        num_layers=6,
-    )
-    return model
-
-
-# GPT-XLarge Presets
-@register_model
-def gpt_extra_large(
     input_size: int, 
     output_size: int, 
     dropout: float = 0.0, 
@@ -133,6 +130,28 @@ def gpt_extra_large(
     return model
 
 
+# GPT-XLarge Presets
+@register_model
+def gpt_extra_large(
+    input_size: int, 
+    output_size: int, 
+    dropout: float = 0.0, 
+    attn_drop: float = 0.0,
+    **kwargs
+):
+    model = GPT(
+        input_size=input_size, 
+        output_size=output_size, 
+        d_model=1024, 
+        nhead=8, 
+        dropout=dropout, 
+        attn_drop=attn_drop,
+        ff_dim=2048,
+        num_layers=8,
+    )
+    return model
+
+
 # GPT-Huge Presets
 @register_model
 def gpt_huge(
@@ -145,19 +164,39 @@ def gpt_huge(
     model = GPT(
         input_size=input_size, 
         output_size=output_size, 
-        d_model=1024, 
+        d_model=1280, 
         nhead=16, 
         dropout=dropout, 
         attn_drop=attn_drop,
-        ff_dim=2048,
-        num_layers=8,
+        ff_dim=2560,
+        num_layers=12,
     )
     return model
 
 
+# GPT-Huge Presets
+@register_model
+def gpt_gigantic(
+    input_size: int, 
+    output_size: int, 
+    dropout: float = 0.0, 
+    attn_drop: float = 0.0,
+    **kwargs
+):
+    model = GPT(
+        input_size=input_size, 
+        output_size=output_size, 
+        d_model=1280, 
+        nhead=16, 
+        dropout=dropout, 
+        attn_drop=attn_drop,
+        ff_dim=2560,
+        num_layers=24,
+    )
+    return model
 
-# Models and Modules
 
+# Default model settings
 _default_cfg = {
     "layerscale": {
         "class": "LayerScale",
