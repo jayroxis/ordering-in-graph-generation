@@ -44,12 +44,13 @@ class ModelModule(pl.LightningModule):
         pred = self(img, node_pair[:, :-1])
         loss = self.criterion(pred, node_pair)
         self.log('train_loss', loss)
+        last_lr = self.lr_schedulers().get_last_lr()[0]
+        self.log('lr', last_lr, prog_bar=True)
         return loss
     
-    def training_step_end(self, step_output):
-        last_lr = self.lr_schedulers().get_last_lr()[0]
-        self.log('lr', last_lr)
-        return super().training_step_end(step_output)
+    def on_training_epoch_end(self):
+        self.lr_schedulers().step()
+        super().on_train_epoch_end()
 
     def configure_optimizers(self):
         lr = float(self.lr)
@@ -74,9 +75,4 @@ class ModelModule(pl.LightningModule):
             last_epoch=-1,
             verbose=False
         )
-        lr_scheduler_config = {
-            "scheduler": scheduler,
-            "interval": "step",
-            "frequency": 1,
-        }
-        return [optimizer], [lr_scheduler_config]
+        return [optimizer], [scheduler]

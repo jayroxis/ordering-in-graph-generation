@@ -231,3 +231,41 @@ class LatentSortGraphDataset(RenderedPlanarGraphDataset):
         sort_idx = emb.argsort(0).squeeze(1)
         node_pair = node_pair[sort_idx]
         return img, node_pair
+
+
+class LatentSortRejectConfusionDataset(LatentSortGraphDataset):
+    @torch.no_grad()
+    def __getitem__(self, index):
+        """
+        Generate a rendered planar graph and corresponding node coordinate pairs for a
+        given index.
+
+        Args:
+            index (int): Index of the graph to generate.
+
+        Returns:
+            tuple: A tuple of the rendered image as a torch tensor and the node
+            coordinate pairs as a torch tensor.
+        """
+        img, node_pair = super().__getitem__(index)
+        max_latent_grad = self.get_latent_grad(node_pair).max()
+
+        for _ in range(10):
+            if max_latent_grad < 10.0:
+                break
+            img, node_pair = super().__getitem__(index)
+            max_latent_grad = self.get_latent_grad(node_pair).max()
+
+        emb = self.encoder(node_pair)
+        sort_idx = emb.argsort(0).squeeze(1)
+        node_pair = node_pair[sort_idx]
+        return img, node_pair
+    
+    def get_latent_grad(self, node_pair, ord=2):
+        emb = self.encoder(node_pair)
+        node_pair_diff = torch.linalg.norm(node_pair[1:] - node_pair[:-1], dim=-1, ord=ord)
+        emb_diff = torch.linalg.norm(emb[1:] - emb[:-1], dim=-1, ord=ord)
+        latent_grad = node_pair_diff / (emb_diff + 1e-9)
+        if latent_grad.numel() == 0:
+            return torch.tensor([0.0])
+        return latent_grad

@@ -40,7 +40,7 @@ def main():
         data_module.train_dataloader()
     ) * epochs + 1
     total_steps = int(total_steps)
-    training_config["total_steps"] = total_steps
+    training_config["total_steps"] = epochs
 
     # Create Model Module
     model_module = ModelModule(
@@ -53,7 +53,6 @@ def main():
 
     # Set up trainer
     lr = float(training_config["lr"])
-    swa_lrs = training_config.get('swa_lrs', lr)
     training_strategy = training_config.get('training_strategy')
     
     # 
@@ -62,19 +61,20 @@ def main():
         accelerator='gpu',
         precision=32,
         strategy=training_strategy,
-        max_epochs=training_config['epochs'],
+        max_epochs=epochs,
         accumulate_grad_batches=training_config.get('grad_accum', 1),
         log_every_n_steps=training_config.get('log_interval', 1),
         check_val_every_n_epoch=training_config.get("check_val_every_n_epoch", 1),
         enable_checkpointing=training_config.get("save_checkpoint", True),
-        callbacks=[StochasticWeightAveraging(swa_lrs=swa_lrs)],
         logger=tb_logger,
     )
 
     # Train the model
+    resume_path = config['model_config'].get("resume")
     trainer.fit(
         model=model_module, 
-        train_dataloaders=data_module.train_dataloader()
+        train_dataloaders=data_module.train_dataloader(),
+        ckpt_path=resume_path,
     )
 
 

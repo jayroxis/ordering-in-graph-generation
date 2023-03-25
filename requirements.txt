@@ -4,3 +4,5 @@ pytorch-lightning==1.8.0
 timm==0.6.11
 networkx==2.7.1
 scipy==1.8.0
+opencv-python
+seaborn
