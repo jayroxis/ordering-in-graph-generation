@@ -7,7 +7,7 @@ import networkx as nx
 from utils.helpers import shuffle_tensor
 
 
-class PadSequence:
+class PadSequenceConstant:
     """
     A collate function for PyTorch DataLoader that pads sequences in batches to the same length.
     Supports both list/tuple of tensors and single tensor batches.

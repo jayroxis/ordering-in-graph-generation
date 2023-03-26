@@ -1,6 +1,7 @@
 
 import torch
 from data.dataset import build_dataset
+from data.misc import *
 
 
 class StandardDataModule:
@@ -46,5 +47,9 @@ class StandardDataModule:
     
     def _setup_dataloader(self, dataset, config):
         DATALOADER = eval(str(config["class"]))
+        if "collate_fn" in config["params"]:
+            collate_fn = config["params"].get("collate_fn")
+            collate_fn = eval(collate_fn["class"])(**collate_fn["params"])
+            config["params"]["collate_fn"] = collate_fn
         dataloader = DATALOADER(dataset, **config["params"])
         return dataloader
