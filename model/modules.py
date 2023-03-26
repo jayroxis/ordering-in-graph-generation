@@ -11,6 +11,18 @@ from timm.models.registry import register_model
 
 
 @register_model
+def image_patching_16(in_chans=3, emb_dim=1024, **kwargs):
+    module = nn.Conv2d(
+        in_channels=in_chans,
+        out_channels=emb_dim,
+        kernel_size=16,
+        stride=16,
+    )
+    module.forward_features = module.forward
+    return module
+
+
+@register_model
 class LayerScale(nn.Module):
     """
     A scaling layer that scales the output of another 

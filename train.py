@@ -1,12 +1,17 @@
+
+import os
 import yaml
-
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import StochasticWeightAveraging
+from pytorch_lightning.loggers import TensorBoardLogger
 
-from engine.arguments import ArgumentParserModule
-from engine.data import DataModule
-from engine.model import ModelModule
-from pytorch_lightning import loggers as pl_loggers
+# This line is very IMPORTANT for expected Cluster behavior
+#       Note: if you want to use Slurm, use other environments.
+from pytorch_lightning.plugins.environments import LightningEnvironment
+
+# Load PyTorch Lightning training
+from engine.data import *
+from engine.arguments import *
+from engine.model import *
 
 
 def main():
@@ -14,68 +19,39 @@ def main():
     arg_parser = ArgumentParserModule()
     args = arg_parser.parse_args()
 
-    # Convert args.gpu to a list if it is an integer
-    gpus = args.gpu
-    if isinstance(gpus, int):
-        gpus = [gpus]
-
     # Load configuration file
     with open(args.config, 'r') as f:
-        config = yaml.safe_load(f)
+        configs = yaml.safe_load(f)
+    data_config = configs["data"]
+    train_config = configs["training"]
+
+    # Create model from configs
+    model = eval(configs["class"])(config=configs)
     
-    # Recalculate batch size 
-    data_config = config['data_config']
-    data_config["batch_size"] = int(
-        data_config["batch_size"] // len(gpus)
-    )
-
-    # Create Data Module
-    data_module = DataModule(data_config)
-    data_module.setup()
-
-    # Set up training strategy
-    training_config = config['training_config']
-    epochs = int(training_config["epochs"])
-    total_steps = len(
-        data_module.train_dataloader()
-    ) * epochs + 1
-    total_steps = int(total_steps)
-    training_config["total_steps"] = total_steps
-
-    # Create Model Module
-    model_module = ModelModule(
-        model_config=config['model_config'], 
-        training_config=training_config,
-    )
+    # Get data module
+    data = eval(data_config["class"])(config=data_config)
 
     # Set up logger
-    tb_logger = pl_loggers.TensorBoardLogger(save_dir="runs/")
+    save_dir = train_config.get("save_dir", "./")
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    tb_logger = TensorBoardLogger(save_dir=save_dir)
 
-    # Set up trainer
-    lr = float(training_config["lr"])
-    swa_lrs = training_config.get('swa_lrs', lr)
-    training_strategy = training_config.get('training_strategy')
-    
-    # 
+    # Create PyTorch Lightning Trainer
     trainer = pl.Trainer(
-        devices=gpus,
-        accelerator='gpu',
-        precision=32,
-        strategy=training_strategy,
-        max_epochs=training_config['epochs'],
-        accumulate_grad_batches=training_config.get('grad_accum', 1),
-        log_every_n_steps=training_config.get('log_interval', 1),
-        check_val_every_n_epoch=training_config.get("check_val_every_n_epoch", 1),
-        enable_checkpointing=training_config.get("save_checkpoint", True),
-        callbacks=[StochasticWeightAveraging(swa_lrs=swa_lrs)],
+        devices=args.gpu,
         logger=tb_logger,
+        plugins=[LightningEnvironment()],
+        **train_config["params"]
     )
 
     # Train the model
     trainer.fit(
-        model=model_module, 
-        train_dataloaders=data_module.train_dataloader()
+        model, 
+        train_dataloaders=data.train_loader, 
+        val_dataloaders=data.val_loader
     )
+
 
 
 if __name__ == "__main__":
