@@ -6,8 +6,6 @@ from timm import create_model
 import timm.models.registry as registry
 
 import torch.nn as nn
-from .modules import *
-from .positional import *
 
 
 def build_model(model_name: str, default_model: str = "", *args, **kwargs):
@@ -44,10 +42,16 @@ def build_partial_class(config):
 
     assert "class" in config, "The input config should be a key \"class\"."
     params = config.get("params", {})
-    model_class = eval(config["class"])
-    partial_class = functools.partial(model_class, **params)
+    if config["class"] in registry._model_entrypoints:
+        partial_class = functools.partial(
+            build_model, 
+            model_name=config["class"], 
+            **params
+        )
+    else:
+        model_class = eval(config["class"])
+        partial_class = functools.partial(model_class, **params)
     return partial_class
-
 
 
 def build_module_registry(config: dict, default_cfg: dict = {}):
