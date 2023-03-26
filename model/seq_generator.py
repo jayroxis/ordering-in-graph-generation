@@ -224,19 +224,31 @@ class Visual2Sequence(nn.Module):
         params_group = []
 
         # Get visual encoder parameters group
-        vis_enc_params = self.vis_enc.get_params_group(*args, **kwargs)
+        if hasattr(self.vis_enc, "get_params_group"):
+            vis_enc_params = self.vis_enc.get_params_group(*args, **kwargs)
+        else:
+            vis_enc_params = [{"params": self.vis_enc.parameters(), }]
         params_group.extend(vis_enc_params)
 
         # Get positional encoder parameters group
-        seq_enc_params = self.seq_enc.get_params_group(*args, **kwargs)
+        if hasattr(self.seq_enc, "get_params_group"):
+            seq_enc_params = self.seq_enc.get_params_group(*args, **kwargs)
+        else:
+            seq_enc_params = [{"params": self.seq_enc.parameters(), }]
         params_group.extend(seq_enc_params)
 
         # Get sequence Generator parameters group
-        seq_gen_params = self.seq_gen.get_params_group(*args, **kwargs)
+        if hasattr(self.seq_gen, "get_params_group"):
+            seq_gen_params = self.seq_gen.get_params_group(*args, **kwargs)
+        else:
+            seq_gen_params = [{"params": self.seq_gen.parameters(), }]
         params_group.extend(seq_gen_params)
 
         # Get correction model parameters group
-        correction_params = self.correction.get_params_group(*args, **kwargs)
+        if hasattr(self.correction, "get_params_group"):
+            correction_params = self.correction.get_params_group(*args, **kwargs)
+        else:
+            correction_params = [{"params": self.correction.parameters(), }]
         params_group.extend(correction_params)
 
         return params_group

@@ -1,47 +1,50 @@
-from typing import Optional
 
 import torch
-import pytorch_lightning as pl
-from torch.utils.data import DataLoader
-from torch.utils.data.dataset import random_split
-
-from data.dataset import *
-from data.misc import PadSequence
+from data.dataset import build_dataset
 
 
-class DataModule(pl.LightningDataModule):
-    def __init__(self, data_config):
+class DataModule:
+    def __init__(self, config: dict):
         super().__init__()
-        self.data_config = data_config
-        self.dataset = None
-        self.train_loader = None
 
-    def setup(self, stage: Optional[str] = None):
-        latent_sort_encoder = self.data_config.get("latent_sort_encoder")
-        if latent_sort_encoder is not None:
-            print("[INFO] Using Latent Ordering.")
-            self.dataset = LatentSortGraphDataset(
-                encoder=torch.jit.load(latent_sort_encoder),
-                **self.data_config
-            )
-        else:
-            self.dataset = RenderedPlanarGraphDataset(**self.data_config)
+        self.train_set, self.train_loader = None, None
+        self.val_set, self.val_loader = None, None
+        self.test_set, self.test_loader = None, None
 
-        train_size = int(len(self.dataset) * 0.8)
-        valid_size = len(self.dataset) - train_size
-        self.train_dataset, self.valid_dataset = random_split(self.dataset, [train_size, valid_size])
+        if "train_set" in config:
+            self.train_set = self._setup_dataset(config["train_set"])
+            if "train_loader" in config:
+                self.train_loader = self._setup_dataloader(
+                    dataset=self.train_set,
+                    config=config["train_loader"]
+                )
 
-        pad_value = self.data_config['pad_value']
-        self.train_loader = DataLoader(
-            self.train_dataset,
-            collate_fn=PadSequence(pad_value),
-            batch_size=self.data_config['batch_size'],
-            shuffle=self.data_config['shuffle'],
-            num_workers=self.data_config['num_workers'],
-            pin_memory=self.data_config['pin_memory']
+        if "val_set" in config:
+            self.val_set = self._setup_dataset(config["val_set"])
+            if "val_loader" in config:
+                self.val_loader = self._setup_dataloader(
+                    dataset=self.val_set,
+                    config=config["val_loader"]
+                )
+
+        if "test_set" in config:
+            self.test_set = self._setup_dataset(config["test_set"])
+            if "test_loader" in config:
+                self.test_loader = self._setup_dataloader(
+                    dataset=self.test_set,
+                    config=config["test_loader"]
+                )
+        
+    def _setup_dataset(self, config):
+        name = str(config["class"])
+        params = config.get("params", {})
+        dataset = build_dataset(
+            dataset_name=name, 
+            params=params
         )
-
-    def train_dataloader(self):
-        return self.train_loader
-
-
+        return dataset
+    
+    def _setup_dataloader(self, dataset, config):
+        DATALOADER = eval(str(config["class"]))
+        dataloader = DATALOADER(dataset, **config["params"])
+        return dataloader
