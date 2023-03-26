@@ -10,7 +10,6 @@ from model import *
 from model.misc import build_model
 from utils.criterion import *
 
-from copy import deepcopy
 from matplotlib import cm
 
 

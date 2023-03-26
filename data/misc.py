@@ -149,6 +149,14 @@ class latent_sort:
         return sorted_seq
 
 
+def no_sort(seq):
+    """
+    Simply no sorting.
+    """
+    return seq.clone()
+
+
+
 def svd_sort(seq):
     """
     Sort a D-dimensional sequence along the direction of maximum variance 

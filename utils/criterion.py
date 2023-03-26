@@ -1,7 +1,10 @@
 
+
+
 import torch
 import torch.nn as nn
-
+import torch.nn.functional as F
+from timm.models.registry import register_model
 
 
 def permutation_invariant_errors(x, y, p=2, root=True, pad_value=-1):
@@ -56,7 +59,7 @@ def permutation_invariant_errors(x, y, p=2, root=True, pad_value=-1):
     return errors / N
 
 
-
+@register_model
 class UndirectedGraphLoss(nn.Module):
     """
     L1 + L2 Loss for node pairs on an undirected graph.
@@ -139,3 +142,58 @@ class UnorderedUndirectedGraphLoss(nn.Module):
         if torch.isnan(final_loss).any() or torch.isinf(final_loss).any():
             import pdb; pdb.set_trace()
         return final_loss.mean()
+    
+
+@register_model
+class DimensionwiseHybridLoss(nn.Module):
+    def __init__(self, config):
+        super(DimensionwiseHybridLoss, self).__init__()
+        self.loss_functions = []
+        for d in config:
+            loss_fn = eval(d["class"])(**d["params"])
+            start_idx, end_idx = d["index"]
+            self.loss_functions.append((loss_fn, start_idx, end_idx))
+
+    def forward(self, pred, target):
+        loss = 0
+        for loss_fn, start_idx, end_idx in self.loss_functions:
+            # Apply the corresponding loss function for the specified dimensions
+            loss = loss + loss_fn(
+                pred[:, :, start_idx:end_idx], 
+                target[:, :, start_idx:end_idx]
+            )
+        return loss
+
+
+@register_model
+class PSGRelationalLoss(nn.Module):
+    def __init__(
+        self,
+        object_classes: int = 133,
+        predicate_classes: int = 56,
+        loss_func: dict = {"class": "nn.CrossEntropyLoss"},
+    ):
+        super(PSGRelationalLoss, self).__init__()
+        loss_class = eval(loss_func["class"])
+        loss_params = loss_func.get("params", {})
+        self.loss_func = loss_class(**loss_params)
+        self.obj_cls = object_classes
+        self.pd_cls = predicate_classes
+
+    def forward(self, pred, target):
+        # Convert target to one-hot
+        gt_triplelet = [
+            F.one_hot(target[..., 0], num_classes=self.obj_cls).float(),
+            F.one_hot(target[..., 1], num_classes=self.pd_cls).float(),
+            F.one_hot(target[..., 2], num_classes=self.obj_cls).float(),
+        ]
+        pred_triplelet = [
+            pred[..., :self.obj_cls],
+            pred[..., self.obj_cls:-self.obj_cls],
+            pred[..., -self.obj_cls:],
+        ]
+        loss = 0
+        for i in range(3):
+            print(pred_triplelet[i], gt_triplelet[i])
+            loss = loss + self.loss_func(pred_triplelet[i], gt_triplelet[i])
+        return loss

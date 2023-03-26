@@ -5,6 +5,7 @@ from .misc import build_model
 from timm.models.registry import register_model
 
 
+
 @register_model
 def conditional_sequence_generator(modality, model_config, **kwargs):
     if modality == "sequence":
