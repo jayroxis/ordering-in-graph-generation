@@ -8,11 +8,11 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import OneCycleLR
 from torch.utils.tensorboard import SummaryWriter
 
-from utils.data.dataset import *
-from utils.data.misc import PadSequence
-from utils.model.misc import *
-from utils.model.graph_gpt import GraphGPT
-from utils.criterion import UndirectedGraphLoss
+from module.data.dataset import *
+from module.data.misc import PadSequence
+from module.model.misc import *
+from module.model.graph_gpt import GraphGPT
+from module.criterion import UndirectedGraphLoss
 
 
 def parse_arguments():
