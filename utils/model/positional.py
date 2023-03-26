@@ -1,13 +1,30 @@
 import torch
 import torch.nn as nn
 import numpy as np
-
+from .misc import build_module_registry
 from timm.models.registry import register_model
+
+
+# Default model settings
+_default_cfg = {
+    "ff_layer": {
+        "class": "nn.Linear",
+    },
+    "activation": {
+        "class": "nn.GELU",
+    },
+    "dropout": {
+        "class": "nn.Dropout",
+    },
+    "layernorm": {
+        "class": "nn.LayerNorm",
+    },
+}
 
 
 @register_model
 class SinusoidalEncoder(nn.Module):
-    def __init__(self, d_model, max_freq=10):
+    def __init__(self, d_model, max_freq=10, **kwargs,):
         """
         Initialize the sinusoidal encoder.
 
@@ -46,10 +63,15 @@ class SinusoidalEncoder(nn.Module):
         return pos_enc
 
 
-
 @register_model    
 class SinusoidalMLPEncoder(nn.Module):
-    def __init__(self, d_model, max_freq=10):
+    def __init__(
+        self, 
+        d_model, 
+        max_freq=10, 
+        module_config: dict = {}, 
+        **kwargs,
+    ):
         """
         Initialize the sinusoidal MLP encoder.
 
@@ -60,11 +82,19 @@ class SinusoidalMLPEncoder(nn.Module):
         super().__init__()
         self.max_freq = max_freq
         self.d_model = d_model
+
+        # init module registry
+        self.module_registry = build_module_registry(
+            config=module_config,
+            default_cfg=_default_cfg,
+        )
+        FeedForwardLayer = self.module_registry["ff_layer"]
+        Activation = self.module_registry["activation"]
+
         self.mlp = nn.Sequential(
-            nn.Linear(2 * max_freq, d_model),
-            nn.GELU(),
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, d_model)
+            FeedForwardLayer(2 * max_freq, d_model),
+            Activation(),
+            FeedForwardLayer(d_model, d_model)
         )
         self._init_weights_()
         
@@ -111,8 +141,6 @@ class SinusoidalMLPEncoder(nn.Module):
 
         return output
 
-    
-
 
 @register_model
 class MLPEncoder(nn.Module):
@@ -121,8 +149,9 @@ class MLPEncoder(nn.Module):
         input_size, 
         d_model, 
         hidden_size=64, 
-        act='gelu', 
-        num_layers=2
+        num_layers=2,
+        module_config={},
+        **kwargs,
     ):
         """
         Initialize the MLP encoder.
@@ -135,6 +164,15 @@ class MLPEncoder(nn.Module):
         - num_layers: number of layers in the MLP. Defaults to 2.
         """
         super().__init__()
+
+        # init module registry
+        self.module_registry = build_module_registry(
+            config=module_config,
+            default_cfg=_default_cfg,
+        )
+        FeedForwardLayer = self.module_registry["ff_layer"]
+        Activation = self.module_registry["activation"]
+
         self.d_model = d_model
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -143,18 +181,9 @@ class MLPEncoder(nn.Module):
         # define the MLP layers
         layers = []
         for i in range(num_layers):
-            layers.append(nn.Linear(input_size if i == 0 else hidden_size, hidden_size))
-            if act == 'relu':
-                layers.append(nn.ReLU())
-            elif act == 'leaky_relU':
-                layers.append(nn.LeakyReLU())
-            elif act == 'tanh':
-                layers.append(nn.Tanh())
-            elif act == 'sigmoid':
-                layers.append(nn.Sigmoid())
-            else:
-                layers.append(nn.GELU())
-        layers.append(nn.Linear(hidden_size, d_model))
+            layers.append(FeedForwardLayer(input_size if i == 0 else hidden_size, hidden_size))
+            layers.append(Activation())
+        layers.append(FeedForwardLayer(hidden_size, d_model))
         
         self.mlp = nn.Sequential(*layers)
 
@@ -182,6 +211,7 @@ class GaussianEmbedding(nn.Module):
         d_model, 
         trainable: bool = True,
         init_std: float = 0.02,
+        **kwargs,
     ):
         """
         (Learnable) Positional Embedding initialized with Guassian Distribution.
@@ -210,6 +240,7 @@ class GaussianEmbedding(nn.Module):
         return x + self.pos_emb
     
 
+
 @register_model
 class FourierEmbedding(nn.Module):
     def __init__(
@@ -218,6 +249,7 @@ class FourierEmbedding(nn.Module):
         d_model, 
         trainable: bool = True,
         base_freq: int = 10000,
+        **kwargs,
     ):
         """
         (Learnable) Positional Embedding initialized with Guassian Distribution.
@@ -267,7 +299,8 @@ class FourierEncoder1D(nn.Module):
         self, 
         emb_dim, 
         base_freq: int = 10000, 
-        trainable: bool = False
+        trainable: bool = False,
+        **kwargs,
     ):
         """
         :param emb_dim: The last dimension of the tensor you want to apply pos emb to.
@@ -332,7 +365,8 @@ class FourierEncoder2D(nn.Module):
         self, 
         channels, 
         base_freq: int = 10000, 
-        trainable: bool = False
+        trainable: bool = False,
+        **kwargs,
     ):
         """
         :param channels: The last dimension of the tensor you want to apply pos emb to.
@@ -404,7 +438,8 @@ class FourierEncoder3D(nn.Module):
         self, 
         channels, 
         base_freq: int = 10000, 
-        trainable: bool = False
+        trainable: bool = False,
+        **kwargs,
     ):
         """
         :param channels: The last dimension of the tensor you want to apply pos emb to.

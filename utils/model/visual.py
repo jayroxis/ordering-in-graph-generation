@@ -3,56 +3,133 @@ import torch
 import torch.nn as nn
 from .misc import build_model
 
+from .misc import build_module_registry
+from timm.models.registry import register_model
+
+
+
+@register_model
+def custom_visual_encoder(
+    backbone: str,
+    output_dim: int, 
+    in_chans: int = 3,
+    img_size: int = 256, 
+    module_config: dict = {},
+    **kwargs, 
+):
+    """
+    Visual encoder with maximum flexibility.
+    """
+    model = VisualEncoder(
+        model_name=backbone,
+        output_dim=output_dim,
+        img_size=img_size,
+        module_config=module_config,
+        in_chans=in_chans,
+        **kwargs, 
+    )
+    return model
+
+
+@register_model
+def custom_conv_encoder(
+    backbone: str,
+    output_dim: int, 
+    in_chans: int = 3,
+    module_config: dict = {},
+    **kwargs, 
+):
+    """
+    Convolutional encoder with maximum flexibility.
+    """
+    model = ConvNetEncoder(
+        model_name=backbone,
+        output_dim=output_dim,
+        module_config=module_config,
+        in_chans=in_chans,
+        **kwargs, 
+    )
+    return model
+
+
+
+# Default model settings
+_default_cfg = {
+    "ff_layer": {
+        "class": "nn.Linear",
+    },
+    "activation": {
+        "class": "nn.GELU",
+    },
+    "dropout": {
+        "class": "nn.Dropout",
+    },
+    "pos_emb": {
+        "class": "FourierEmbedding",
+    },
+}
+
 
 class VisualEncoder(nn.Module):
     def __init__(
         self, 
-        model_name: str = "efficientnet_b0", 
+        model_name: str,
+        output_dim: int, 
         in_chans: int = 3,
         img_size: int = 256, 
-        embed_dim: int = 256, 
+        module_config: dict = {}, 
+        **kwargs,
     ):
-        """
-        Initialize the visual encoder.
-
-        Args:
-            model_name (str, optional): Name of the timm model to use as the encoder. Defaults to "efficientnet_b0".
-            img_size (int, optional): The input image size. Defaults to 256.
-            embed_dim (int, optional): The hidden size for the transformer layer. Defaults to 256.
-            num_heads (int, optional): The number of attention heads for the transformer layer. Defaults to 8.
-            dropout (float, optional): The dropout rate for the transformer layer. Defaults to 0.1.
-        """
         super(VisualEncoder, self).__init__()
 
-        self.encoder = build_model(model_name, in_chans=in_chans, num_classes=0)
+        self.in_chans = in_chans
         self.img_size = img_size
+        self.output_dim = output_dim
 
+        # create model using timm
+        self.encoder = build_model(model_name, num_classes=0, **kwargs)
+
+        # init module registry
+        self.module_registry = build_module_registry(
+            config=module_config,
+            default_cfg=_default_cfg,
+        )
+        FeedForwardLayer = self.module_registry["ff_layer"]
+        Activation = self.module_registry["activation"]
+        PositionalEmbedding = self.module_registry["pos_emb"]
+
+        # get visual embedding shape
+        self.get_encoded_feature_shape()
+
+        # initialize the positional embeddings:
+        self.pos_embed = PositionalEmbedding(
+            num_tokens=self.num_tokens, 
+            d_model=self.output_channels,
+        )
+        
+        # output layer
+        self.fc = nn.Sequential(
+            FeedForwardLayer(self.output_channels, 2 * output_dim),
+            Activation(),
+            FeedForwardLayer(2 * output_dim, output_dim),
+        )
+
+    @torch.no_grad()
+    def get_encoded_feature_shape(self):
         # calculate the number of visual tokens
-        with torch.no_grad():
-            dummy_img = torch.zeros((1, 3, img_size, img_size))
-            features = self.encoder.forward_features(dummy_img)
+        dummy_img = torch.zeros((1, self.in_chans, self.img_size, self.img_size))
+        features = self.encoder.forward_features(dummy_img)
+        if isinstance(features, list):
+            features = features[-1]
+        if features.ndim == 4:
             features = features.permute(0, 2, 3, 1)
             features = features.contiguous()
             num_tokens = features.size(1) * features.size(2)
+        else:
+            num_tokens = features.shape[1]
 
         self.output_channels = features.size(-1)
         self.num_tokens = num_tokens
-
-        # initialize the positional embeddings:
-        #    https://github.com/huggingface/pytorch-image-models/blob/main/timm/models/vision_transformer.py
-        self.positional_embeddings = nn.Parameter(
-            torch.randn(
-                1, 
-                self.num_tokens, 
-                self.output_channels
-            ) * 0.02
-        )
-        
-        self.fc = nn.Sequential(
-            nn.Linear(self.output_channels, 2 * embed_dim),
-            nn.GELU(),
-            nn.Linear(2 * embed_dim, embed_dim),
-        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -65,10 +142,13 @@ class VisualEncoder(nn.Module):
             torch.Tensor: Encoded feature tensor with shape (batch_size, num_tokens, output_channels).
         """
         features = self.encoder.forward_features(x)
-        features = features.permute(0, 2, 3, 1)
-        features = features.contiguous()
-        tokens = features.view(features.size(0), -1, self.output_channels)
-        tokens = tokens + self.positional_embeddings
+        if isinstance(features, list):
+            features = features[-1]
+        if features.ndim == 4:
+            features = features.permute(0, 2, 3, 1)
+            features = features.contiguous()
+            features = features.view(features.size(0), -1, self.output_channels)
+        tokens = features + self.pos_embed(features)
         tokens = self.fc(tokens)
         return tokens
     
@@ -88,7 +168,95 @@ class VisualEncoder(nn.Module):
         # define the parameter groups for the optimizer
         params = [
             {"params": self.encoder.parameters(), "lr": lr, "weight_decay": weight_decay},
-            {"params": self.positional_embeddings, "lr": lr, "weight_decay": 0},
+            {"params": self.pos_embed.parameters(), "lr": lr, "weight_decay": 0},
         ]
         return params
     
+
+
+
+class ConvNetEncoder(VisualEncoder):
+    def __init__(
+        self, 
+        model_name: str,
+        output_dim: int, 
+        in_chans: int = 3,
+        module_config: dict = {}, 
+        **kwargs,
+    ):
+        """
+        Visual encoder with Convolutional Backbone.
+        The biggest difference comes from the flexibility of input image.
+        """
+        super(VisualEncoder, self).__init__()
+
+        self.output_dim = output_dim
+        self.in_chans = in_chans
+
+        # create model using timm
+        self.encoder = build_model(
+            model_name, 
+            in_chans=in_chans, 
+            num_classes=0, 
+            **kwargs
+        )
+
+        # init module registry
+        if "pos_emb" not in module_config:
+            module_config["pos_emb"] ={
+                "class": "FourierEncoderPermute2D",
+            }
+        self.module_registry = build_module_registry(
+            config=module_config,
+            default_cfg=_default_cfg,
+        )
+        FeedForwardLayer = self.module_registry["ff_layer"]
+        Activation = self.module_registry["activation"]
+        PositionalEmbedding = self.module_registry["pos_emb"]
+
+        # get visual embedding shape
+        self.get_encoded_feature_shape()
+
+        # initialize the positional embeddings:
+        self.pos_embed = PositionalEmbedding(
+            channels=self.output_channels,
+        )
+        
+        # output layer
+        self.fc = nn.Sequential(
+            FeedForwardLayer(self.output_channels, 2 * output_dim),
+            Activation(),
+            FeedForwardLayer(2 * output_dim, output_dim),
+        )
+
+    @torch.no_grad()
+    def get_encoded_feature_shape(self):
+        # calculate the number of visual tokens
+        dummy_img = torch.zeros((1, self.in_chans, 256, 256))
+        features = self.encoder.forward_features(dummy_img)
+        if isinstance(features, list):
+            features = features[-1]
+        if features.ndim == 4:
+            features = features.permute(0, 2, 3, 1)
+            features = features.contiguous()
+        self.output_channels = features.size(-1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Pass the input through the visual encoder.
+
+        Args:
+            x (torch.Tensor): Input image tensor with shape (batch_size, channels, height, width).
+
+        Returns:
+            torch.Tensor: Encoded feature tensor with shape (batch_size, num_tokens, output_channels).
+        """
+        features = self.encoder.forward_features(x)
+        tokens = features + self.pos_embed(features)
+
+        tokens = tokens.permute(0, 2, 3, 1)
+        tokens = tokens.contiguous()
+        tokens = tokens.view(features.size(0), -1, self.output_channels)
+        
+        tokens = self.fc(tokens)
+        return tokens

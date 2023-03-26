@@ -7,8 +7,10 @@
 import torch
 import torch.nn as nn
 
+from timm.models.registry import register_model
 
 
+@register_model
 class LayerScale(nn.Module):
     """
     A scaling layer that scales the output of another 
@@ -23,7 +25,7 @@ class LayerScale(nn.Module):
         return x * self.alpha.unsqueeze(0).unsqueeze(0)
 
 
-
+@register_model
 class CasualAttentionMask(nn.Module):
     """
     Causal Attention Mask (generation) for GPT Architecture.
