@@ -5,8 +5,8 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
 
-from module.data.dataset import *
-from module.data.misc import PadSequence
+from data.dataset import *
+from data.misc import PadSequence
 
 
 class DataModule(pl.LightningDataModule):
