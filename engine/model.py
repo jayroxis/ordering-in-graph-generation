@@ -1,8 +1,8 @@
 import torch
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import OneCycleLR
-from utils.model.graph_gpt import GraphGPT
-from utils.criterion import UndirectedGraphLoss
+from module.model.graph_gpt import GraphGPT
+from module.criterion import UndirectedGraphLoss
 
 
 class ModelModule(pl.LightningModule):

@@ -7,27 +7,17 @@ from .misc import build_model
 class GraphGPT(nn.Module):
     def __init__(
         self, 
-        vis_enc_name="efficientnet_b0", 
-        img_size=256, 
-        embed_dim=512, 
-        max_freq=10, 
-        gpt_output_size=4, 
-        gpt_d_model=512, 
-        gpt_num_layers=8,
+        vis_enc_config,
+        seq_enc_config,
         **kwargs,
     ):
         super().__init__()
 
         # Visual encoder
-        self.vis_enc = build_model()
-        self.vis_enc = VisualEncoder(
-            vis_enc_name, 
-            img_size=img_size, 
-            embed_dim=embed_dim
-        )
-
+        self.vis_enc = build_model(**vis_enc_config)
+        
         # Positional encoder
-        self.pos_enc = PositionalEncoder(
+        self.seq_enc = PositionalEncoder(
             d_model=embed_dim, 
             max_freq=max_freq
         )
@@ -56,7 +46,7 @@ class GraphGPT(nn.Module):
 
         # encode node pair features
         if node_pair is not None:
-            edge_emb = self.pos_enc(node_pair)
+            edge_emb = self.seq_enc(node_pair)
 
             # concatenate visual and positional embeddings
             token = torch.cat([visual_emb, edge_emb], dim=1)
@@ -85,7 +75,7 @@ class GraphGPT(nn.Module):
         params_group.extend(vis_params_group)
 
         # Get positional encoder parameters group
-        pos_params_group = self.pos_enc.get_params_group(*args, **kwargs)
+        pos_params_group = self.seq_enc.get_params_group(*args, **kwargs)
         params_group.extend(pos_params_group)
 
         # Get GPT parameters group
