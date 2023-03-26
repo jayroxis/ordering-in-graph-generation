@@ -2,6 +2,8 @@
 import torch
 import torch.nn as nn
 import timm
+from timm.utils.model_ema import *
+
 import pytorch_lightning as pl
 
 from model import *
@@ -10,7 +12,6 @@ from utils.criterion import *
 
 from copy import deepcopy
 from matplotlib import cm
-
 
 
 class VisionSequenceModel(pl.LightningModule):
@@ -52,6 +53,13 @@ class VisionSequenceModel(pl.LightningModule):
             model_name=self.model_config['class'],
             **self.model_config['params']
         )
+        if "ema_model" in self.model_config:
+            ema_config = self.model_config["ema_model"]
+            print(f"[INFO] Using ema model {ema_config}.")
+            EMA_MODEL = eval(ema_config["class"])
+            self.ema_model = EMA_MODEL(self.model, **ema_config["params"])
+            for param in self.ema_model.parameters():
+                param.requires_grad = False
 
     def build_train_metrics(self):
         # Build training metrics
@@ -167,8 +175,9 @@ class VisionSequenceModel(pl.LightningModule):
         return losses
             
     def training_step_end(self, step_output):
-        if step_output is not None:
-            self.saved_output = step_output
+        # update ema model if exists
+        if hasattr(self, "ema_model"):
+            self.ema_model.update(self.model)
 
         # log learning rate
         lr_schedulers = self.lr_schedulers()
@@ -178,6 +187,7 @@ class VisionSequenceModel(pl.LightningModule):
             last_lr = lr_schedulers.get_last_lr()[0]
         self.log('lr', last_lr, prog_bar=True)
 
+        # log training statistics
         prefix = "train/"
         self.log_dict(
             {prefix + k: v for k, v in step_output.items()}, 
@@ -202,11 +212,23 @@ class VisionSequenceModel(pl.LightningModule):
             target=seq, 
             metrics=self.eval_metrics
         )
-        prefix = "val/teacher_forcing/"
+        prefix = "val/"
         self.log_dict(
             {prefix + k: v for k, v in stats.items()}, 
             prog_bar=False
         )
+        if hasattr(self, "ema_model"):
+            pred = self.ema_model.module(img, seq[:, :-1])
+            stats = self.calc_loss(
+                pred=pred, 
+                target=seq, 
+                metrics=self.eval_metrics
+            )
+            prefix = "val/ema/"
+            self.log_dict(
+                {prefix + k: v for k, v in stats.items()}, 
+                prog_bar=False
+            )
 
     def lr_scheduler_step(self, *args, **kwargs):
         # Step learning rate schedulers

@@ -53,7 +53,7 @@ data:
 
 # ==================== Training Configs =========================
 training:
-  save_dir: runs/
+  save_dir: ./runs/
   optimizer:
     class: torch.optim.AdamW
     params:
@@ -108,3 +108,8 @@ model:
     gpt_name: gpt_medium
     conv_backbone: image_patching_16
     pretrained: False
+
+  ema_model:
+    class: ModelEmaV2
+    params: 
+      decay: 0.995
