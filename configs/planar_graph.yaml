@@ -24,6 +24,10 @@ data:
       num_workers: 8
       pin_memory: False
       shuffle: True
+      collate_fn:
+        class: PadSequenceConstant
+        params:
+          pad_value: -1.0
 
   val_set:
     class: RenderedPlanarGraphDataset
@@ -42,6 +46,10 @@ data:
       num_workers: 8
       pin_memory: False
       shuffle: False
+      collate_fn:
+        class: PadSequenceConstant
+        params:
+          pad_value: -1.0
 
 # ==================== Training Configs =========================
 training:
@@ -53,10 +61,14 @@ training:
       weight_decay: 0.0
 
   scheduler:
-    class: torch.optim.lr_scheduler.CosineAnnealingLR
+    class: torch.optim.lr_scheduler.OneCycleLR
     params:
-      T_max: 1000            # should be the same as training epochs
-      eta_min: 0.0
+      max_lr: 0.0002
+      total_steps: 1000            # should be the same as training epochs
+      pct_start: 0.01
+      div_factor: 25.0
+      final_div_factor: 10000.0
+      anneal_strategy: 'cos'
 
   params:                   # arguments for PyTorch Lightning Trainer
     max_epochs: 1000         # should be the same as training epochs

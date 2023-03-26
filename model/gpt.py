@@ -422,7 +422,7 @@ class GPT(nn.Module):
         out = self.embedding(x)
 
         # generate attention mask
-        attn_mask = self.attn_mask(x.size(1))
+        attn_mask = self.attn_mask(x.size(1)).to(x.device)
 
         # decoder blocks
         for block in self.decoder:
@@ -485,7 +485,7 @@ class GPT(nn.Module):
         )
         
         # self attention mask
-        attn_mask = self.attn_mask(x.size(1))
+        attn_mask = self.attn_mask(x.size(1)).to(x.device)
 
         # decoder blocks
         for i, block in enumerate(self.decoder):

@@ -150,8 +150,7 @@ class VisionSequenceModel(pl.LightningModule):
             loss = items["metric"](pred, target)
             stats[name] = loss.item()
             weight = items.get("weight", 1.0)
-            total_loss = total_loss + items["weight"] * loss
-        stats["total_loss"] = total_loss.item()
+            total_loss = total_loss + weight * loss
 
         # This `loss` will be the loss used for backward
         stats["loss"] = total_loss
@@ -166,10 +165,6 @@ class VisionSequenceModel(pl.LightningModule):
             metrics=self.train_metrics
         )
         return losses
-
-    def on_train_epoch_end(self):
-        # learning rate scheduler update
-        self.lr_scheduler_step(epoch=self.current_epoch)
             
     def training_step_end(self, step_output):
         if step_output is not None:
@@ -213,15 +208,15 @@ class VisionSequenceModel(pl.LightningModule):
             prog_bar=False
         )
 
-    def lr_scheduler_step(self, epoch):
+    def lr_scheduler_step(self, *args, **kwargs):
         # Step learning rate schedulers
         lr_schedulers = self.lr_schedulers()
         if isinstance(lr_schedulers, list) or isinstance(lr_schedulers, tuple):
             for scheduler in lr_schedulers:
                 if scheduler is not None:
-                    scheduler.step(epoch)
+                    scheduler.step()
         else:
-            lr_schedulers.step(epoch)
+            lr_schedulers.step()
 
     def log_image(self, name, tensor, step=None):
         # assume tensor is a torch.Tensor with shape (height, width)
