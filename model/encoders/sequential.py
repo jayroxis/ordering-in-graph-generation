@@ -26,16 +26,21 @@ _default_cfg = {
 
 @register_model
 class SinusoidalEncoder(nn.Module):
-    def __init__(self, d_model, max_freq=10, **kwargs,):
+    def __init__(
+        self, 
+        output_dim, 
+        max_freq=10, 
+        **kwargs
+    ):
         """
         Initialize the sinusoidal encoder.
 
         Args:
-        - d_model: output dimensionality of the encoder
+        - output_dim: output dimensionality of the encoder
         - max_freq: maximum frequency used in the sinusoidal transformation
         """
         super().__init__()
-        self.d_model = d_model
+        self.output_dim = output_dim
         self.max_freq = max_freq
     
     def forward(self, x):
@@ -46,20 +51,21 @@ class SinusoidalEncoder(nn.Module):
         - x: input tensor of shape (batch_size, set_size, D)
 
         Returns:
-        - pos_enc: tensor of shape (batch_size, set_size, d_model) representing the encoded input
+        - pos_enc: tensor of shape (batch_size, set_size, output_dim) 
+                   representing the encoded input
         """
-        pos_enc = torch.zeros(x.shape[0], x.shape[1], self.d_model)
+        pos_enc = torch.zeros(x.shape[0], x.shape[1], self.output_dim)
 
         # Compute the set of frequencies
-        freqs = torch.pow(2, torch.arange(0, self.d_model, 2) / self.d_model * self.max_freq)
+        freqs = torch.pow(2, torch.arange(0, self.output_dim, 2) / self.output_dim * self.max_freq)
 
         # Apply the sinusoidal transformation for each frequency
-        for i in range(self.d_model // 2):
+        for i in range(self.output_dim // 2):
             pos_enc[:, :, 2*i] = torch.sin(x[:, :, 0] * freqs[i])
             pos_enc[:, :, 2*i+1] = torch.cos(x[:, :, 1] * freqs[i])
 
         # Handle odd output dimensionality
-        if self.d_model % 2 == 1:
+        if self.output_dim % 2 == 1:
             pos_enc[:, :, -1] = torch.sin(x[:, :, 2] * freqs[-1])
 
         return pos_enc
@@ -69,7 +75,7 @@ class SinusoidalEncoder(nn.Module):
 class SinusoidalMLPEncoder(nn.Module):
     def __init__(
         self, 
-        d_model, 
+        output_dim, 
         max_freq=10, 
         module_config: dict = {}, 
         **kwargs,
@@ -78,12 +84,12 @@ class SinusoidalMLPEncoder(nn.Module):
         Initialize the sinusoidal MLP encoder.
 
         Args:
-        - d_model: output dimensionality of the encoder
+        - output_dim: output dimensionality of the encoder
         - max_freq: maximum frequency used in the sinusoidal transformation
         """
         super().__init__()
         self.max_freq = max_freq
-        self.d_model = d_model
+        self.output_dim = output_dim
 
         # init module registry
         self.module_registry = build_module_registry(
@@ -94,9 +100,9 @@ class SinusoidalMLPEncoder(nn.Module):
         Activation = self.module_registry["activation"]
 
         self.mlp = nn.Sequential(
-            FeedForwardLayer(2 * max_freq, d_model),
+            FeedForwardLayer(2 * max_freq, output_dim),
             Activation(),
-            FeedForwardLayer(d_model, d_model)
+            FeedForwardLayer(output_dim, output_dim)
         )
         self._init_weights_()
         
@@ -112,7 +118,7 @@ class SinusoidalMLPEncoder(nn.Module):
             if isinstance(m, nn.Linear):
                 nn.init.normal_(
                     m.weight, 
-                    std=1 / (0.02 * self.max_freq * self.d_model)
+                    std=1 / (0.02 * self.max_freq * self.output_dim)
                 )
     
     def forward(self, x):
@@ -123,7 +129,8 @@ class SinusoidalMLPEncoder(nn.Module):
         - x: input tensor of shape (batch_size, set_size, D)
 
         Returns:
-        - output: tensor of shape (batch_size, set_size, d_model) representing the encoded input
+        - output: tensor of shape (batch_size, set_size, output_dim) 
+                  representing the encoded input
         """
         pos_enc = torch.zeros(
             x.shape[0], 
@@ -148,9 +155,9 @@ class SinusoidalMLPEncoder(nn.Module):
 class MLPEncoder(nn.Module):
     def __init__(
         self, 
-        input_size, 
-        d_model, 
-        hidden_size=64, 
+        input_dim, 
+        output_dim, 
+        hidden_dim=256, 
         num_layers=2,
         module_config={},
         **kwargs,
@@ -159,9 +166,9 @@ class MLPEncoder(nn.Module):
         Initialize the MLP encoder.
 
         Args:
-        - input_size: input dimensionality of the encoder
-        - d_model: output dimensionality of the encoder
-        - hidden_size: size of the hidden layers in the MLP. Defaults to 64.
+        - input_dim: input dimensionality of the encoder
+        - output_dim: output dimensionality of the encoder
+        - hidden_dim: size of the hidden layers in the MLP. Defaults to 64.
         - act: activation function to use in the MLP. Defaults to 'gelu'.
         - num_layers: number of layers in the MLP. Defaults to 2.
         """
@@ -175,17 +182,17 @@ class MLPEncoder(nn.Module):
         FeedForwardLayer = self.module_registry["ff_layer"]
         Activation = self.module_registry["activation"]
 
-        self.d_model = d_model
-        self.input_size = input_size
-        self.hidden_size = hidden_size
+        self.output_dim = output_dim
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
         self.num_layers = num_layers
         
         # define the MLP layers
         layers = []
         for i in range(num_layers):
-            layers.append(FeedForwardLayer(input_size if i == 0 else hidden_size, hidden_size))
+            layers.append(FeedForwardLayer(input_dim if i == 0 else hidden_dim, hidden_dim))
             layers.append(Activation())
-        layers.append(FeedForwardLayer(hidden_size, d_model))
+        layers.append(FeedForwardLayer(hidden_dim, output_dim))
         
         self.mlp = nn.Sequential(*layers)
 
@@ -197,7 +204,8 @@ class MLPEncoder(nn.Module):
         - x: input tensor of shape (batch_size, set_size, D)
 
         Returns:
-        - output: tensor of shape (batch_size, set_size, d_model) representing the encoded input
+        - output: tensor of shape (batch_size, set_size, output_dim) 
+                  representing the encoded input
         """
         output = self.mlp(x)
 
