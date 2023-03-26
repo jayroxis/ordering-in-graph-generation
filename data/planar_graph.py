@@ -48,7 +48,6 @@ class PlanarGraph:
         - numpy array: array of (x,y) coordinates of the points with no points closer than epsilon
         """
         # Check distances between points
-        epsilon = self.epsilon
         distances = np.linalg.norm(points[:, np.newaxis, :] - points, axis=2)
         np.fill_diagonal(distances, np.inf)
         while np.any(distances < self.epsilon):
@@ -94,17 +93,36 @@ class PlanarGraph:
         """
         Collapses edges in the graph that have a small angle between them.
         """
-        for p1 in self.G.nodes:
-            neighbors = sorted(self.G.neighbors(p1))
-            for i in range(len(neighbors)):
-                p2, p3 = neighbors[i], neighbors[(i+1) % len(neighbors)]
+        edges_to_remove = set()
+
+        for edge in self.G.edges():
+            p1, p2 = edge
+            neighbors_p1 = set(self.G.neighbors(p1)) - {p2}
+            neighbors_p2 = set(self.G.neighbors(p2)) - {p1}
+
+            for p3 in neighbors_p1:
                 v1, v2 = self.points[p1] - self.points[p2], self.points[p1] - self.points[p3]
                 len_v1, len_v2 = np.linalg.norm(v1), np.linalg.norm(v2)
                 eps = 1e-8
                 cos_angle = np.dot(v1, v2) / max((len_v1 * len_v2), eps)
                 angle = np.arccos(np.clip(cos_angle, -1.0, 1.0))
                 if angle < self.tiny_angle:
-                    self.G.remove_edge(p1, p2)
+                    edges_to_remove.add((p1, p2))
+                    break
+
+            for p3 in neighbors_p2:
+                v1, v2 = self.points[p2] - self.points[p1], self.points[p2] - self.points[p3]
+                len_v1, len_v2 = np.linalg.norm(v1), np.linalg.norm(v2)
+                eps = 1e-8
+                cos_angle = np.dot(v1, v2) / max((len_v1 * len_v2), eps)
+                angle = np.arccos(np.clip(cos_angle, -1.0, 1.0))
+                if angle < self.tiny_angle:
+                    edges_to_remove.add((p1, p2))
+                    break
+
+        for edge in edges_to_remove:
+            if self.G.has_edge(*edge):
+                self.G.remove_edge(*edge)
 
     def remove_disconnected_components(self) -> None:
         """

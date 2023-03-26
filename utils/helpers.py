@@ -337,11 +337,11 @@ def count_parameters(model, verbose=True):
         header = f"Parameters in {type(model).__name__}: {num_params:,}"
 
         table = [
-            ['Trainable Parameters', num_params_str],
-            ['Untrainable Parameters', human_format(
+            ['    Trainable', num_params_str],
+            ['    Untrainable', human_format(
                 sum(p.numel() for p in model.parameters() if not p.requires_grad)
             )],
-            ['Total Parameters', human_format(
+            ['    Total', human_format(
                 sum(p.numel() for p in model.parameters())
             )]
         ]
@@ -351,7 +351,7 @@ def count_parameters(model, verbose=True):
         print("-" * 60)
 
         for row in table:
-            print(f"{row[0]:<30} | {row[1]:>15}")
+            print(f"{row[0]:<30} | {row[1]:>20}")
         print("-" * 60 + "\n")
 
     return num_params

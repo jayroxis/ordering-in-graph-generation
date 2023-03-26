@@ -22,15 +22,15 @@ def custom_gpt(
 # GPT-Nano Presets
 @register_model
 def gpt_nano(
-    input_size: int, 
-    output_size: int, 
+    input_dim: int, 
+    output_dim: int, 
     dropout: float = 0.0, 
     attn_drop: float = 0.0,
     **kwargs
 ):
     model = GPT(
-        input_size=input_size, 
-        output_size=output_size, 
+        input_dim=input_dim, 
+        output_dim=output_dim, 
         d_model=192, 
         nhead=8, 
         dropout=dropout, 
@@ -44,15 +44,15 @@ def gpt_nano(
 # GPT-Tiny Presets
 @register_model
 def gpt_tiny(
-    input_size: int, 
-    output_size: int, 
+    input_dim: int, 
+    output_dim: int, 
     dropout: float = 0.0, 
     attn_drop: float = 0.0,
     **kwargs
 ):
     model = GPT(
-        input_size=input_size, 
-        output_size=output_size, 
+        input_dim=input_dim, 
+        output_dim=output_dim, 
         d_model=256, 
         nhead=8, 
         dropout=dropout, 
@@ -66,15 +66,15 @@ def gpt_tiny(
 # GPT-Small Presets
 @register_model
 def gpt_small(
-    input_size: int, 
-    output_size: int, 
+    input_dim: int, 
+    output_dim: int, 
     dropout: float = 0.0, 
     attn_drop: float = 0.0,
     **kwargs
 ):
     model = GPT(
-        input_size=input_size, 
-        output_size=output_size, 
+        input_dim=input_dim, 
+        output_dim=output_dim, 
         d_model=384, 
         nhead=8, 
         dropout=dropout, 
@@ -89,15 +89,15 @@ def gpt_small(
 # GPT-Medium Presets
 @register_model
 def gpt_medium(
-    input_size: int, 
-    output_size: int, 
+    input_dim: int, 
+    output_dim: int, 
     dropout: float = 0.0, 
     attn_drop: float = 0.0,
     **kwargs
 ):
     model = GPT(
-        input_size=input_size, 
-        output_size=output_size, 
+        input_dim=input_dim, 
+        output_dim=output_dim, 
         d_model=512, 
         nhead=8, 
         dropout=dropout, 
@@ -111,15 +111,15 @@ def gpt_medium(
 # GPT-Large Presets
 @register_model
 def gpt_large(
-    input_size: int, 
-    output_size: int, 
+    input_dim: int, 
+    output_dim: int, 
     dropout: float = 0.0, 
     attn_drop: float = 0.0,
     **kwargs
 ):
     model = GPT(
-        input_size=input_size, 
-        output_size=output_size, 
+        input_dim=input_dim, 
+        output_dim=output_dim, 
         d_model=768, 
         nhead=8, 
         dropout=dropout, 
@@ -130,24 +130,24 @@ def gpt_large(
     return model
 
 
-# GPT-XLarge Presets
+# GPT-Extra-Large Presets
 @register_model
-def gpt_extra_large(
-    input_size: int, 
-    output_size: int, 
+def gpt_xlarge(
+    input_dim: int, 
+    output_dim: int, 
     dropout: float = 0.0, 
     attn_drop: float = 0.0,
     **kwargs
 ):
     model = GPT(
-        input_size=input_size, 
-        output_size=output_size, 
+        input_dim=input_dim, 
+        output_dim=output_dim, 
         d_model=1024, 
         nhead=8, 
         dropout=dropout, 
         attn_drop=attn_drop,
         ff_dim=2048,
-        num_layers=8,
+        num_layers=10,
     )
     return model
 
@@ -155,15 +155,15 @@ def gpt_extra_large(
 # GPT-Huge Presets
 @register_model
 def gpt_huge(
-    input_size: int, 
-    output_size: int, 
+    input_dim: int, 
+    output_dim: int, 
     dropout: float = 0.0, 
     attn_drop: float = 0.0,
     **kwargs
 ):
     model = GPT(
-        input_size=input_size, 
-        output_size=output_size, 
+        input_dim=input_dim, 
+        output_dim=output_dim, 
         d_model=1280, 
         nhead=16, 
         dropout=dropout, 
@@ -174,18 +174,18 @@ def gpt_huge(
     return model
 
 
-# GPT-Huge Presets
+# GPT-Gigantic Presets
 @register_model
 def gpt_gigantic(
-    input_size: int, 
-    output_size: int, 
+    input_dim: int, 
+    output_dim: int, 
     dropout: float = 0.0, 
     attn_drop: float = 0.0,
     **kwargs
 ):
     model = GPT(
-        input_size=input_size, 
-        output_size=output_size, 
+        input_dim=input_dim, 
+        output_dim=output_dim, 
         d_model=1280, 
         nhead=16, 
         dropout=dropout, 
@@ -272,7 +272,7 @@ class DecoderLayer(nn.Module):
         # self-attention layer
         self.self_attn = MultiheadAttention(d_model, nhead)
         self.norm1 = LayerNorm(d_model)
-        self.scale1 = LayerScale(d_model)
+        self.scale1 = LayerScale(d_model=d_model)
 
         # feedforward layer
         self.ff = nn.Sequential(
@@ -282,7 +282,7 @@ class DecoderLayer(nn.Module):
             Dropout(dropout),
         )
         self.norm2 = LayerNorm(d_model)
-        self.scale2 = LayerScale(d_model)
+        self.scale2 = LayerScale(d_model=d_model)
 
     def forward(self, x, mask=None, target=None):
         """
@@ -341,8 +341,8 @@ class GPT(nn.Module):
     """
     def __init__(
             self, 
-            output_size: int, 
-            input_size: int, 
+            output_dim: int, 
+            input_dim: int, 
             d_model: int = 512, 
             nhead: int = 8, 
             dropout: float = 0.0, 
@@ -368,7 +368,7 @@ class GPT(nn.Module):
         AttentionMask = self.module_registry["attn_mask"]
 
         # embedding layer
-        self.embedding = FeedForwardLayer(input_size, d_model)
+        self.embedding = FeedForwardLayer(input_dim, d_model)
 
         # attention mask
         self.attn_mask = AttentionMask(dropout=attn_drop)
@@ -393,7 +393,7 @@ class GPT(nn.Module):
         self.fc = nn.Sequential(
             FeedForwardLayer(d_model, d_model),
             Activation(),
-            FeedForwardLayer(d_model, output_size),
+            FeedForwardLayer(d_model, output_dim),
         )
         self.norm = LayerNorm(d_model)
 
@@ -412,11 +412,11 @@ class GPT(nn.Module):
 
         Args:
         - x (torch.Tensor): The input tensor of shape 
-          (batch_size, sequence_length, input_size).
+          (batch_size, sequence_length, input_dim).
 
         Returns:
         - torch.Tensor: The output tensor of shape 
-          (batch_size, sequence_length, output_size).
+          (batch_size, sequence_length, output_dim).
         """
         # embedding layer
         out = self.embedding(x)
@@ -439,13 +439,13 @@ class GPT(nn.Module):
 
         Args:
         - x (torch.Tensor): The input tensor of shape 
-          (batch_size, sequence_length, input_size).
+          (batch_size, sequence_length, input_dim).
         - func (callable): A callable function that takes input tensor `x` and
-          returns an output tensor of shape (batch_size, sequence_length, output_size).
+          returns an output tensor of shape (batch_size, sequence_length, output_dim).
         - buff_idx (int): The index of the buffer to use for storing the last output.
 
         Returns:
-        - torch.Tensor: The output tensor of shape (batch_size, sequence_length, output_size).
+        - torch.Tensor: The output tensor of shape (batch_size, sequence_length, output_dim).
         """
         # embedding layer
         if self.buffer[buff_idx] is None:
@@ -471,11 +471,11 @@ class GPT(nn.Module):
 
         Args:
         - x (torch.Tensor): The input tensor of shape 
-                            (batch_size, sequence_length, input_size).
+                            (batch_size, sequence_length, input_dim).
 
         Returns:
         - torch.Tensor: The output tensor of shape 
-                        (batch_size, sequence_length, output_size).
+                        (batch_size, sequence_length, output_dim).
         """
         # embedding layer
         out = self._forward_last_with_buffer_(

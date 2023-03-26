@@ -1,11 +1,11 @@
 
 import torch
 import torch.nn as nn
-from .misc import build_model
 
-from .misc import build_module_registry
+from model.misc import build_model
+from model.misc import build_module_registry
+
 from timm.models.registry import register_model
-
 
 
 @register_model
@@ -13,7 +13,10 @@ def custom_visual_encoder(
     backbone: str,
     output_dim: int, 
     in_chans: int = 3,
-    img_size: int = 256, 
+    img_size: int = 256,
+    num_heads: int = 8, 
+    dropout: float = 0.0,
+    transformer_depth = 1, 
     module_config: dict = {},
     **kwargs, 
 ):
@@ -26,6 +29,9 @@ def custom_visual_encoder(
         img_size=img_size,
         module_config=module_config,
         in_chans=in_chans,
+        num_heads=num_heads, 
+        dropout=dropout,
+        transformer_depth=transformer_depth,
         **kwargs, 
     )
     return model
@@ -36,6 +42,9 @@ def custom_conv_encoder(
     backbone: str,
     output_dim: int, 
     in_chans: int = 3,
+    num_heads: int = 8, 
+    dropout: float = 0.0,
+    transformer_depth = 1,
     module_config: dict = {},
     **kwargs, 
 ):
@@ -47,6 +56,9 @@ def custom_conv_encoder(
         output_dim=output_dim,
         module_config=module_config,
         in_chans=in_chans,
+        num_heads=num_heads, 
+        dropout=dropout,
+        transformer_depth=transformer_depth,
         **kwargs, 
     )
     return model
@@ -77,6 +89,9 @@ class VisualEncoder(nn.Module):
         output_dim: int, 
         in_chans: int = 3,
         img_size: int = 256, 
+        num_heads: int = 8, 
+        dropout: float = 0.0,
+        transformer_depth = 1,
         module_config: dict = {}, 
         **kwargs,
     ):
@@ -108,10 +123,18 @@ class VisualEncoder(nn.Module):
         )
         
         # output layer
-        self.fc = nn.Sequential(
-            FeedForwardLayer(self.output_channels, 2 * output_dim),
-            Activation(),
-            FeedForwardLayer(2 * output_dim, output_dim),
+        self.fc = FeedForwardLayer(self.output_channels, output_dim)
+        self.transformer_encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=output_dim,
+                dim_feedforward=output_dim*2,
+                nhead=num_heads,
+                dropout=dropout,
+                activation=Activation(),
+                batch_first=True,
+                norm_first=True
+            ),
+            num_layers=transformer_depth,
         )
 
     @torch.no_grad()
@@ -181,12 +204,15 @@ class ConvNetEncoder(VisualEncoder):
         model_name: str,
         output_dim: int, 
         in_chans: int = 3,
+        num_heads: int = 8, 
+        dropout: float = 0.0,
+        transformer_depth = 1,
         module_config: dict = {}, 
         **kwargs,
     ):
         """
         Visual encoder with Convolutional Backbone.
-        The biggest difference comes from the flexibility of input image.
+        The biggest difference is that this module can handle input image of different size.
         """
         super(VisualEncoder, self).__init__()
 
@@ -223,10 +249,18 @@ class ConvNetEncoder(VisualEncoder):
         )
         
         # output layer
-        self.fc = nn.Sequential(
-            FeedForwardLayer(self.output_channels, 2 * output_dim),
-            Activation(),
-            FeedForwardLayer(2 * output_dim, output_dim),
+        self.fc = FeedForwardLayer(self.output_channels, output_dim)
+        self.transformer_encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=output_dim,
+                dim_feedforward=output_dim*2,
+                nhead=num_heads,
+                dropout=dropout,
+                activation=Activation(),
+                batch_first=True,
+                norm_first=True
+            ),
+            num_layers=transformer_depth,
         )
 
     @torch.no_grad()
@@ -259,4 +293,5 @@ class ConvNetEncoder(VisualEncoder):
         tokens = tokens.view(features.size(0), -1, self.output_channels)
         
         tokens = self.fc(tokens)
+        tokens = self.transformer_encoder(tokens)
         return tokens
