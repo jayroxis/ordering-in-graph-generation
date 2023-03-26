@@ -3,7 +3,7 @@ import torch
 from data.dataset import build_dataset
 
 
-class DataModule:
+class StandardDataModule:
     def __init__(self, config: dict):
         super().__init__()
 

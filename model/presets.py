@@ -11,12 +11,12 @@ def vision_gpt(
     in_chans: int = 3,
     emb_dim: int = 1024,
     output_dim: int = 4,
-    dtype: str = "float",
+    seq_dtype: str = "float",
     stop_token: int = -1.0,
     gpt_name: str = "gpt_medium",
     conv_backbone: str = "resnet50",
     vit_backbone: str = None,
-    pretrained: bool =False,
+    pretrained: bool = False,
     vis_enc_cfg: dict = {},
     seq_gen_cfg: dict = {},
     seq_enc_cfg: dict = {},
@@ -32,7 +32,7 @@ def vision_gpt(
         emb_dim     (int):          Dimension of the embedding used to represent visual 
                                         features and generate sequences.
         output_dim  (int):          Dimension of the output sequences.
-        dtype       (str):          Data type of the generated sequence. Can be "float" or "categorical".
+        seq_dtype   (str):          Data type of the generated sequence. Can be "float" or "categorical".
         stop_token  (float or int): Value used to indicate the end of a generated sequence.
         gpt_name    (str):          Setting of the GPT model to use.
         conv_backbone (str):        Name of the convolutional backbone model to use for 
@@ -93,10 +93,10 @@ def vision_gpt(
     )
 
     # Stop Token Encoder
-    if dtype == "categorical":
+    if seq_dtype == "categorical":
         stop_detector = dict(
             model_name="stop_token_dector",
-            dtype=dtype,
+            dtype=seq_dtype,
             stop_idx=int(stop_token), 
             threshold=0.5,
             **stop_detector_cfg
@@ -104,7 +104,7 @@ def vision_gpt(
     else:
         stop_detector = dict(
             model_name="stop_token_dector",
-            dtype=dtype,
+            dtype=seq_dtype,
             stop_value=float(stop_token), 
             threshold=0.5,
             **stop_detector_cfg
