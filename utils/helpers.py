@@ -199,6 +199,7 @@ def plot_graph(node_pair, save_path=None, threshold=0.01):
     draw_graph(G, save_path=save_path)
 
 
+
 def plot_graph_strict(node_pair, save_path=None):
     """
     Plots a graph with node coordinates from the input node_pair using matplotlib or saves to file

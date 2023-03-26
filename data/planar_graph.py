@@ -121,9 +121,19 @@ class RenderedPlanarGraphDataset(RandomPlanarGraphDataset):
         *args: Positional arguments to pass to the parent class constructor.
         **kwargs: Keyword arguments to pass to the parent class constructor.
     """
-    def __init__(self, img_size=224, *args, **kwargs):
+    def __init__(
+            self, 
+            img_size=224, 
+            sort_func=mean_square_sort, 
+            *args, **kwargs
+        ):
         super().__init__(*args, **kwargs)
         self.img_size = img_size
+        if type(sort_func) == str:
+            sort_func = eval(sort_func)
+        elif type(sort_func) == dict:
+            sort_func = eval(sort_func["class"])(**sort_func["params"])
+        self.sort_func = sort_func
 
     def __getitem__(self, index):
         """
@@ -156,7 +166,7 @@ class RenderedPlanarGraphDataset(RandomPlanarGraphDataset):
                 node_pair = get_node_pairs_single(V, E)
                 
                 # Random Shuffle the node pairs
-                node_pair = sort_by_columns(node_pair)
+                node_pair = self.sort_func(node_pair)
                 
                 # Get rendered image
                 linewidth = np.random.randint(5, 10)
@@ -184,75 +194,6 @@ class RenderedPlanarGraphDataset(RandomPlanarGraphDataset):
         # If we exceed the maximum number of retries, return None for both V and E
         print(f"Max retries exceeded for planar graph {index}")
         return None, None
-
-
-
-class LatentSortGraphDataset(RenderedPlanarGraphDataset):
-    """
-    Inherits from RenderedPlanarGraphDataset. This dataset class has latent sort
-    incorporated.
-
-    Latent sort is a technique to convert any unordered data structure, such as a
-    graph, into an ordered sequence. This is done using an encoder that encodes the
-    input sequence to a 1D latent sequence. By using `argsort` on the 1D latent
-    sequence, a deterministic order can be obtained for any unordered data structure.
-    This is crucial to convert any unordered data into an ordered sequence, which is
-    required for training sequential models.
-
-    Args:
-        - encoder (torch.nn.Module): The latent sort encoder.
-        *args: Positional arguments to pass to the parent class constructor.
-        **kwargs: Keyword arguments to pass to the parent class constructor.
-    
-    Note:
-        To get fast inference performance, when preparing latent sort encoder, it is
-        recommended to use PyTorch JIT module.
-
-        Here is an example code for saving the trained encoder model:
-
-        ```python
-        # Make sure the model is on cpu and set to eval mode.
-        encoder = encoder.cpu().eval()
-
-        # Enable OneDNN-Graph for fast inference
-        torch.jit.enable_onednn_fusion(enabled=True)
-
-        # Trace the model if it works, otherwise torch.jit.script
-        dummy_input = [torch.rand(32, 4)] # dummy input
-        traced_model = torch.jit.trace(encoder, dummy_input)
-        traced_model = torch.jit.freeze(traced_model)
-
-        # Disable OneDNN-Graph as default
-        torch.jit.enable_onednn_fusion(enabled=False)
-
-        ```
-
-    """
-    def __init__(self, encoder, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        encoder = encoder.cpu().eval()
-        self.encoder = encoder
-
-    @torch.no_grad()
-    def __getitem__(self, index):
-        """
-        Generate a rendered planar graph and corresponding node coordinate pairs for a
-        given index.
-
-        Args:
-            index (int): Index of the graph to generate.
-
-        Returns:
-            tuple: A tuple of the rendered image as a torch tensor and the node
-            coordinate pairs as a torch tensor.
-        """
-        img, node_pair = super().__getitem__(index)
-        emb = self.encoder(node_pair)
-        sort_idx = emb.argsort(0).squeeze(1)
-        node_pair = node_pair[sort_idx]
-        return img, node_pair
-
 
 
 

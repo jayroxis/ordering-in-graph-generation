@@ -132,8 +132,55 @@ def shuffle_node_pair(node_pair):
     return shuffled
 
 
+class latent_sort:
+    def __init__(self, encoder_path: str, **kwargs):
+        self.encoder=torch.jit.load(
+            encoder_path
+        )
+        
+    def __call__(self, seq):
+        """
+        Sort a D-dimensional sequence on the 1D latent that is obtained
+        using a Neural Network encoder.
+        """
+        latent = self.encoder(seq)
+        idx = torch.argsort(latent.squeeze())
+        sorted_seq = seq[idx]
+        return sorted_seq
 
-def sort_by_columns(E, ascending=False):
+
+def svd_sort(seq):
+    """
+    Sort a D-dimensional sequence along the direction of maximum variance 
+    using Singular Value Decomposition (SVD).
+
+    This function takes a D-dimensional input sequence and sorts it based 
+    on its projections onto the most significant direction in the dataset, 
+    which is found using SVD. 
+
+    Parameters:
+    seq (torch.Tensor): A D-dimensional input sequence represented as a torch.Tensor.
+
+    Returns:
+    torch.Tensor: The input sequence sorted along the direction of maximum variance.
+
+    Example:
+    >>> import torch
+    >>> data = torch.tensor([[1.0, 2.0], [2.0, 1.0], [1.5, 1.5]])
+    >>> sorted_data = svd_sort(data)
+    >>> print(sorted_data)
+    tensor([[2.0000, 1.0000],
+            [1.5000, 1.5000],
+            [1.0000, 2.0000]])
+    """
+    _, s, v = torch.linalg.svd(seq)
+    idx = torch.argmax(s)
+    reduced = v[:, idx] @ seq.T
+    idx = reduced.argsort()
+    return seq[idx]
+
+
+def mean_square_sort(seq, ascending=False):
     """
     Sorts the input tensor E based on the root mean square value of each row.
     
@@ -144,20 +191,10 @@ def sort_by_columns(E, ascending=False):
     Returns:
         sorted_E (torch.Tensor): Sorted tensor, with the same shape as E.
     """
-    # Make a copy of the input tensor E and store its original data type
-    orig_E = E.clone()
-    orig_dtype = E.dtype
-    
-    # Compute the root mean square value of each row of E
-    rms = torch.sqrt(torch.mean(E ** 2, dim=-1))
- 
-    # Convert the tensor to a numpy array and use np.argsort to get the sorted indices
-    rms = rms.numpy()
-    indices = np.argsort(rms) if ascending else np.argsort(-rms)
-    
-    # Convert the sorted indices back to a torch tensor and return it
-    sorted_E = torch.as_tensor(orig_E[indices], dtype=orig_dtype)
-    return sorted_E
+    reduced = torch.sqrt(torch.mean(seq ** 2, dim=-1))
+    indices = torch.argsort(reduced) if ascending else torch.argsort(-reduced)
+    sorted_seq = seq[indices]
+    return sorted_seq
 
 
 
