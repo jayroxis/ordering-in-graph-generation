@@ -319,7 +319,7 @@ def create_gif_from_images(img_dir: str = "imgs/",
 
 
 
-def count_parameters(model, verbose=True):
+def count_parameters(model, name="", verbose=False, return_count=True):
     """
     Count and print the number of trainable parameters of a PyTorch model.
 
@@ -334,7 +334,11 @@ def count_parameters(model, verbose=True):
     num_params_str = human_format(num_params)
 
     if verbose:
-        header = f"Parameters in {type(model).__name__}: {num_params:,}"
+        if name != "":
+            name = f"<{name}>"
+        else:
+            name = f"<{type(model).__name__}>"
+        header = f"Parameters in {name} : {num_params:,}"
 
         table = [
             ['    Trainable', num_params_str],
@@ -346,15 +350,16 @@ def count_parameters(model, verbose=True):
             )]
         ]
 
-        print("\n" + "-" * 60)
+        print("-" * 60)
         print(header.center(59))
         print("-" * 60)
 
         for row in table:
             print(f"{row[0]:<30} | {row[1]:>20}")
-        print("-" * 60 + "\n")
+        print("-" * 60)
 
-    return num_params
+    if return_count:
+        return num_params
 
 
 

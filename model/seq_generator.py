@@ -2,7 +2,18 @@ import torch
 import torch.nn as nn
 
 from .misc import build_model
+from timm.models.registry import register_model
 
+
+@register_model
+def conditional_sequence_generator(modality, model_config, **kwargs):
+    if modality == "sequence":
+        model = Sequence2Sequence(**model_config)
+    elif modality == "image":
+        model = Visual2Sequence(**model_config)
+    else:
+        raise NotImplementedError(f"'{modality}' is not supported yet.")
+    return model
 
 
 class Sequence2Sequence(nn.Module):
@@ -10,7 +21,7 @@ class Sequence2Sequence(nn.Module):
         self, 
         seq_enc: dict,
         seq_gen: dict,
-        stop_detect: dict,
+        stop_detector: dict,
         correction: dict,
         **kwargs,
     ):
@@ -19,13 +30,13 @@ class Sequence2Sequence(nn.Module):
 
         Args:
             seq_enc : dict
-                A dictionary containing the configuration for the sequence encoder.
+                Configuration for the sequence encoder.
             seq_gen : dict
-                A dictionary containing the configuration for the sequence generator.
-            stop_detect : dict
-                A dictionary containing the configuration for the stop token detector.
+                Configuration for the sequence generator.
+            stop_detector : dict
+                Configuration for the stop token detector.
             correction : dict
-                A dictionary containing the configuration for the correction model to improve generated sequence.
+                Configuration for the correction model to improve generated sequence.
         """
         super().__init__()
         
@@ -36,7 +47,7 @@ class Sequence2Sequence(nn.Module):
         self.seq_gen = build_model(**seq_gen)
 
         # Stop Token Detector
-        self.stop_detect = build_model(**stop_detect)
+        self.stop_detector = build_model(**stop_detector)
 
         # Correction Model to Improve Generated Sequence
         self.correction = build_model(**correction)
@@ -82,7 +93,7 @@ class Sequence2Sequence(nn.Module):
 
         return params_group
     
-    def iterative_forward(
+    def generate(
         self,
         input_seq, 
         seq_len=100, 
@@ -118,12 +129,14 @@ class Sequence2Sequence(nn.Module):
                 output_seq,
                 next_token
             ], dim=1)
-            stop_flag = self.stop_detect(output_seq)
+            stop_flag = self.stop_detector(output_seq)
             if stop_flag:
                 break
 
         output_seq = self.correction(output_seq)
         return output_seq
+
+
 
 
 class Visual2Sequence(nn.Module):
@@ -132,7 +145,7 @@ class Visual2Sequence(nn.Module):
         vis_enc: dict,
         seq_enc: dict,
         seq_gen: dict,
-        stop_detect: dict,
+        stop_detector: dict,
         correction: dict = {},
         **kwargs,
     ):
@@ -141,15 +154,15 @@ class Visual2Sequence(nn.Module):
 
         Args:
             vis_enc : dict
-                A dictionary containing the configuration for the visual encoder.
+                Configuration for the visual encoder.
             seq_enc : dict
-                A dictionary containing the configuration for the sequence encoder.
+                Configuration for the sequence encoder.
             seq_gen : dict
-                A dictionary containing the configuration for the sequence generator.
-            stop_detect : dict
-                A dictionary containing the configuration for the stop token detector.
+                Configuration for the sequence generator.
+            stop_detector : dict
+                Configuration for the stop token detector.
             correction : dict (optional)
-                A dictionary containing the configuration for the correction model to improve generated sequence.
+                Configuration for the correction model to improve generated sequence.
         """
         super().__init__()
 
@@ -163,7 +176,7 @@ class Visual2Sequence(nn.Module):
         self.seq_gen = build_model(**seq_gen)
 
         # Stop Token Detector
-        self.stop_detect = build_model(**stop_detect)
+        self.stop_detector = build_model(**stop_detector)
 
         # Correction Model to Improve Generated Sequence
         if correction != {}:
@@ -228,7 +241,7 @@ class Visual2Sequence(nn.Module):
 
         return params_group
     
-    def iterative_forward(
+    def generate(
         self, 
         img, 
         seq_len=100, 
@@ -265,7 +278,7 @@ class Visual2Sequence(nn.Module):
                 output_seq,
                 next_token
             ], dim=1)
-            stop_flag = self.stop_detect(output_seq)
+            stop_flag = self.stop_detector(output_seq)
             if stop_flag:
                 break
         output_seq = self.correction(output_seq)

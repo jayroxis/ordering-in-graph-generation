@@ -16,7 +16,7 @@ def custom_visual_encoder(
     img_size: int = 256,
     num_heads: int = 8, 
     dropout: float = 0.0,
-    transformer_depth = 1, 
+    transformer_depth = 0, 
     module_config: dict = {},
     **kwargs, 
 ):
@@ -124,18 +124,21 @@ class VisualEncoder(nn.Module):
         
         # output layer
         self.fc = FeedForwardLayer(self.output_channels, output_dim)
-        self.transformer_encoder = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(
-                d_model=output_dim,
-                dim_feedforward=output_dim*2,
-                nhead=num_heads,
-                dropout=dropout,
-                activation=Activation(),
-                batch_first=True,
-                norm_first=True
-            ),
-            num_layers=transformer_depth,
-        )
+        if transformer_depth < 1:
+            self.transformer_encoder = nn.Identity()
+        else:
+            self.transformer_encoder = nn.TransformerEncoder(
+                nn.TransformerEncoderLayer(
+                    d_model=output_dim,
+                    dim_feedforward=output_dim*2,
+                    nhead=num_heads,
+                    dropout=dropout,
+                    activation=Activation(),
+                    batch_first=True,
+                    norm_first=True
+                ),
+                num_layers=transformer_depth,
+            )
 
     @torch.no_grad()
     def get_encoded_feature_shape(self):

@@ -49,11 +49,19 @@ class CasualAttentionMask(nn.Module):
 
 
 @register_model
+def stop_token_dector(dtype: str, *args, **kwargs):
+    if dtype == "int" or dtype == "categorical":
+        model = StopTokenDetectorCategorical(*args, **kwargs)
+    else:
+        model = StopTokenDetectorFloat(*args, **kwargs)
+    return model
+
+
 class StopTokenDetectorFloat(nn.Module):
     """
     Stop token detector for float sequence.
     """
-    def __init__(self, stop_value, threshold=0.1):
+    def __init__(self, stop_value, threshold=0.1, **kwargs):
         super(StopTokenDetectorFloat, self).__init__()
         self.stop_value = stop_value
         self.threshold = threshold
@@ -78,9 +86,10 @@ class StopTokenDetectorCategorical(nn.Module):
     """
     Stop token detector for float sequence.
     """
-    def __init__(self, stop_idx):
+    def __init__(self, stop_idx, threshold=0.8):
         super(StopTokenDetectorCategorical, self).__init__()
         self.stop_idx = stop_idx
+        self.threshold = threshold
 
     def forward(self, sequence):
         if sequence.ndim == 3:
@@ -92,6 +101,11 @@ class StopTokenDetectorCategorical(nn.Module):
                 "The input has to be a 3D sequence (B, L, D)" + \
                 " or a single token (B, D)."
             )
-        predicted_indices = torch.argmax(last_tokens, dim=-1)
+        softmax_probs = nn.functional.softmax(last_tokens, dim=-1)
+        predicted_indices = torch.argmax(softmax_probs, dim=-1)
+        max_probs, _ = torch.max(softmax_probs, dim=-1)
         stop_flag = torch.all(predicted_indices == self.stop_idx)
-        return stop_flag
+        if max_probs >= self.threshold:
+            return stop_flag
+        else:
+            return False
