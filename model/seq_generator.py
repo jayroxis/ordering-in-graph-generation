@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from .misc import build_model
+from .misc import build_model, get_params_group
 from timm.models.registry import register_model
 
 
@@ -28,6 +28,7 @@ class Sequence2Sequence(nn.Module):
     ):
         """
         Base model for Sequence-to-Sequence generation.
+        The model handles single modality data.
 
         Args:
             seq_enc : dict
@@ -51,7 +52,10 @@ class Sequence2Sequence(nn.Module):
         self.stop_detector = build_model(**stop_detector)
 
         # Correction Model to Improve Generated Sequence
-        self.correction = build_model(**correction)
+        if correction != {}:
+            self.correction = build_model(**correction)
+        else:
+            self.correction = nn.Identity()
     
     def forward(self, seq):
         """
@@ -73,25 +77,50 @@ class Sequence2Sequence(nn.Module):
         
         return pred
     
-    def get_params_group(self, *args, **kwargs):
+    def get_params_group(self, lr=2e-4, weight_decay=0, **kwargs):
         """
         Collect the params_group in the PyTorch optimizer input format 
         from each of the three modules and return the combined params_group.
         """
+        if hasattr(self, "lr"):
+            lr = self.lr
+        if hasattr(self, "weight_decay"):
+            weight_decay = self.weight_decay
+
+        lr = float(lr)
+        weight_decay = float(weight_decay)
+
         params_group = []
 
-        # Get visual encoder parameters group
-        vis_params_group = self.vis_enc.get_params_group(*args, **kwargs)
-        params_group.extend(vis_params_group)
-
-        # Get positional encoder parameters group
-        pos_params_group = self.seq_enc.get_params_group(*args, **kwargs)
-        params_group.extend(pos_params_group)
-
-        # Get GPT parameters group
-        gpt_params_group = self.seq_gen.get_params_group(*args, **kwargs)
-        params_group.extend(gpt_params_group)
-
+        # Get sequence encoder parameters group
+        params_group += get_params_group(
+            self.seq_enc,
+            lr=lr,
+            weight_decay=weight_decay,
+            **kwargs
+        )
+        # Get sequence Generator parameters group
+        params_group += get_params_group(
+            self.seq_gen,
+            lr=lr,
+            weight_decay=weight_decay,
+            **kwargs
+        )
+        # Get Stop Token Detector parameters group
+        params_group += get_params_group(
+            self.stop_detector,
+            lr=lr,
+            weight_decay=weight_decay,
+            **kwargs
+        )
+        
+        # Get correction model parameters group
+        params_group += get_params_group(
+            self.correction,
+            lr=lr,
+            weight_decay=weight_decay,
+            **kwargs
+        )
         return params_group
     
     def generate(
@@ -197,6 +226,9 @@ class Visual2Sequence(nn.Module):
         Returns:
         - generated sequence
         """
+        assert img.ndim == 4, f"Input image expect 4D tensor but got {img.ndim}-D."
+        assert seq.ndim == 3, f"Input sequence expect 3D tensor but got {seq.ndim}-D."
+
         # encode visual features
         visual_emb = self.vis_enc(img)
 
@@ -217,41 +249,58 @@ class Visual2Sequence(nn.Module):
         pred = output[:, -num_out_token:]
         return pred
     
-    def get_params_group(self, *args, **kwargs):
+
+    def get_params_group(self, lr=2e-4, weight_decay=0, **kwargs):
         """
         Collect the params_group in the PyTorch optimizer input format 
         from each of the three modules and return the combined params_group.
         """
+        if hasattr(self, "lr"):
+            lr = self.lr
+        if hasattr(self, "weight_decay"):
+            weight_decay = self.weight_decay
+
         params_group = []
-
+        
         # Get visual encoder parameters group
-        if hasattr(self.vis_enc, "get_params_group"):
-            vis_enc_params = self.vis_enc.get_params_group(*args, **kwargs)
-        else:
-            vis_enc_params = [{"params": self.vis_enc.parameters(), }]
-        params_group.extend(vis_enc_params)
+        params_group += get_params_group(
+            self.vis_enc,
+            lr=lr,
+            weight_decay=weight_decay,
+            **kwargs
+        )
 
-        # Get positional encoder parameters group
-        if hasattr(self.seq_enc, "get_params_group"):
-            seq_enc_params = self.seq_enc.get_params_group(*args, **kwargs)
-        else:
-            seq_enc_params = [{"params": self.seq_enc.parameters(), }]
-        params_group.extend(seq_enc_params)
+        # Get sequence encoder parameters group
+        params_group += get_params_group(
+            self.seq_enc,
+            lr=lr,
+            weight_decay=weight_decay,
+            **kwargs
+        )
 
         # Get sequence Generator parameters group
-        if hasattr(self.seq_gen, "get_params_group"):
-            seq_gen_params = self.seq_gen.get_params_group(*args, **kwargs)
-        else:
-            seq_gen_params = [{"params": self.seq_gen.parameters(), }]
-        params_group.extend(seq_gen_params)
+        params_group += get_params_group(
+            self.seq_gen,
+            lr=lr,
+            weight_decay=weight_decay,
+            **kwargs
+        )
 
+        # Get Stop Token Detector parameters group
+        params_group += get_params_group(
+            self.stop_detector,
+            lr=lr,
+            weight_decay=weight_decay,
+            **kwargs
+        )
+        
         # Get correction model parameters group
-        if hasattr(self.correction, "get_params_group"):
-            correction_params = self.correction.get_params_group(*args, **kwargs)
-        else:
-            correction_params = [{"params": self.correction.parameters(), }]
-        params_group.extend(correction_params)
-
+        params_group += get_params_group(
+            self.correction,
+            lr=lr,
+            weight_decay=weight_decay,
+            **kwargs
+        )
         return params_group
     
     def generate(

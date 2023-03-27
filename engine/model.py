@@ -11,6 +11,8 @@ from model.misc import build_model
 from utils.criterion import *
 
 from matplotlib import cm
+import torchmetrics
+
 
 
 class VisionSequenceModel(pl.LightningModule):
@@ -92,6 +94,16 @@ class VisionSequenceModel(pl.LightningModule):
                 "weight": float(item.get("weight", 1.0)),
                 "metric": metric,
             }
+            # Define the range of indices that this metric applies to.
+            if "index" in item:
+                start_idx, end_idx = item["index"].split(":")
+                start_idx = int(start_idx) if start_idx != ""  else None
+                end_idx = int(end_idx) if end_idx != ""  else None
+                metric["start_idx"] = start_idx
+                metric["end_idx"] = end_idx
+            else:
+                metric["start_idx"] = None
+                metric["end_idx"] = None
             metrics[name] = metric
         return metrics
 
@@ -154,16 +166,29 @@ class VisionSequenceModel(pl.LightningModule):
         stats = {}
         total_loss = 0
         for name, items in metrics.items():
-            loss = items["metric"](pred, target)
+            start_idx = items["start_idx"]
+            end_idx = items["end_idx"]
+            if isinstance(items["metric"], nn.Module):
+                if not hasattr(items["metric"], "device"):
+                    items["metric"] = items["metric"].to(self.device)
+                    items["metric"].device = self.device
+            loss = items["metric"](
+                pred[..., start_idx:end_idx], 
+                target[..., start_idx:end_idx]
+            )
             stats[name] = loss.item()
             weight = items.get("weight", 1.0)
-            total_loss = total_loss + weight * loss
+            if weight != 0:
+                total_loss = total_loss + weight * loss
 
         # This `loss` will be the loss used for backward
         stats["loss"] = total_loss
         return stats
 
     def training_step(self, batch, batch_idx):
+        """
+        Main training step.
+        """
         img, seq = batch
         pred = self(img, seq[:, :-1])
         losses = self.calc_loss(
@@ -193,15 +218,6 @@ class VisionSequenceModel(pl.LightningModule):
             prog_bar=False
         )
         return super().training_step_end(step_output)
-
-    def eval_with_metrics(self, pred, target, metrics):
-        # evaluate performance
-        stats = {}
-        for name, metric in metrics.items():
-            func = metric["metric"]
-            value = func(pred, target)
-            stats[name] = value.item()
-        return stats
 
     def validation_step(self, batch, batch_idx):
         img, seq = batch

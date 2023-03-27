@@ -79,8 +79,8 @@ def vision_gpt(
         model_name="MLPEncoder",
         input_dim=output_dim, 
         output_dim=emb_dim, 
-        hidden_dim=int(emb_dim // 2), 
-        num_layers=output_dim,
+        hidden_dim=emb_dim, 
+        num_layers=2,
         **seq_enc_cfg
     )
 

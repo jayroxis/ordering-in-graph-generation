@@ -1,17 +1,20 @@
 
 import os
-import yaml
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # This line is very IMPORTANT for expected Cluster behavior
 #       Note: if you want to use Slurm, use other environments.
 from pytorch_lightning.plugins.environments import LightningEnvironment
+
 
 # Load PyTorch Lightning training
 from engine.data import *
 from engine.arguments import *
 from engine.model import *
+
+from utils.helpers import safe_load_yaml
 
 
 def main():
@@ -20,8 +23,7 @@ def main():
     args = arg_parser.parse_args()
 
     # Load configuration file
-    with open(args.config, 'r') as f:
-        configs = yaml.safe_load(f)
+    configs = safe_load_yaml(args.config)
     data_config = configs["data"]
     train_config = configs["training"]
 

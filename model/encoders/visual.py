@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from model.misc import build_model
-from model.misc import build_module_registry
+from model.misc import build_module_registry, get_params_group
 
 from timm.models.registry import register_model
 
@@ -92,6 +92,7 @@ class VisualEncoder(nn.Module):
         num_heads: int = 8, 
         dropout: float = 0.0,
         transformer_depth = 1,
+        pretrained: bool = False,
         module_config: dict = {}, 
         **kwargs,
     ):
@@ -100,9 +101,15 @@ class VisualEncoder(nn.Module):
         self.in_chans = in_chans
         self.img_size = img_size
         self.output_dim = output_dim
+        self.pretrained = pretrained
 
         # create model using timm
-        self.encoder = build_model(model_name, num_classes=0, **kwargs)
+        self.encoder = build_model(
+            model_name, 
+            num_classes=0, 
+            pretrained=pretrained, 
+            **kwargs
+        )
 
         # init module registry
         self.module_registry = build_module_registry(
@@ -179,7 +186,7 @@ class VisualEncoder(nn.Module):
         return tokens
     
     @torch.jit.ignore
-    def get_params_group(self, lr=1e-3, weight_decay=1e-4):
+    def get_params_group(self, lr=1e-3, weight_decay=1e-4, **kwargs):
         """
         Get the optimizer parameters for training the model.
 
@@ -192,8 +199,17 @@ class VisualEncoder(nn.Module):
                   and optimizer settings for a different parameter group.
         """
         # define the parameter groups for the optimizer
-        params = [
-            {"params": self.encoder.parameters(), "lr": lr, "weight_decay": weight_decay},
+        if hasattr(self, "lr"):
+            lr = self.lr
+        if hasattr(self, "weight_decay"):
+            weight_decay = self.weight_decay
+        params = get_params_group(
+            model=self.encoder, 
+            lr=lr, 
+            weight_decay=weight_decay, 
+            **kwargs
+        )
+        params += [
             {"params": self.pos_embed.parameters(), "lr": lr, "weight_decay": 0},
         ]
         return params
@@ -210,6 +226,7 @@ class ConvNetEncoder(VisualEncoder):
         num_heads: int = 8, 
         dropout: float = 0.0,
         transformer_depth = 1,
+        pretrained: bool = False,
         module_config: dict = {}, 
         **kwargs,
     ):
@@ -221,12 +238,14 @@ class ConvNetEncoder(VisualEncoder):
 
         self.output_dim = output_dim
         self.in_chans = in_chans
+        self.pretrained = pretrained
 
         # create model using timm
         self.encoder = build_model(
             model_name, 
             in_chans=in_chans, 
             num_classes=0, 
+            pretrained=pretrained,
             **kwargs
         )
 

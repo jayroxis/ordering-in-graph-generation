@@ -1,13 +1,19 @@
 
 
 # Panoptic Scene Graph on COCO-2017 Dataset
+# PSG Challenge: https://github.com/Jingkang50/OpenPSG
+
 
 import torch
+import torch.nn.functional as F
+from torchvision.transforms import Resize
 
 from data.openpsg import PanopticSceneGraphDataset
 from mmdet.datasets.dataset_wrappers import ClassBalancedDataset
 
+from .misc import *
 from timm.models.registry import register_model
+
 
 
 class BasePSGDataset(torch.utils.data.Dataset):
@@ -16,6 +22,8 @@ class BasePSGDataset(torch.utils.data.Dataset):
         data_root: str,
         test_mode: bool = False,
         split: str = 'train',
+        sort_func: str = "no_sort",
+        oversample_thr: float = 0.05,
         **kwargs,
     ) -> None:
         """
@@ -33,7 +41,11 @@ class BasePSGDataset(torch.utils.data.Dataset):
             to_rgb=True
         )
 
+        # sequence sorting
+        self.sort_func = eval(sort_func)
+
         # Train Pipeline From PSGFormer-ResNet50
+        # https://github.com/Jingkang50/OpenPSG/blob/main/configs/psgformer/psgformer_r50_psg.py    
         self.train_pipeline = [
             dict(type='LoadImageFromFile'),
             dict(type='LoadPanopticSceneGraphAnnotations',
@@ -81,19 +93,50 @@ class BasePSGDataset(torch.utils.data.Dataset):
             )
         ]
 
+        self.test_pipeline = [
+            dict(type='LoadImageFromFile'),
+            dict(type='LoadSceneGraphAnnotations', 
+                with_bbox=True,
+                with_rel=True,
+                with_mask=False,
+                with_seg=False),
+            dict(type='MultiScaleFlipAug',
+                img_scale=(1333, 800),
+                flip=False,
+                transforms=[
+                    dict(type='Resize', keep_ratio=True),
+                    dict(type='RandomFlip'),
+                    dict(type='Normalize', **self.img_norm_cfg),
+                    dict(type='Pad', size_divisor=1),
+                    dict(type='ImageToTensor', keys=['img']),
+                    dict(type='ToTensor', keys=['gt_bboxes', 'gt_labels', 'gt_rels']),
+                    dict(type='ToDataContainer',
+                        fields=(dict(key='gt_bboxes'), dict(key='gt_labels'))),
+                    dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels', 'gt_rels']),
+                ]
+            )
+        ]
+
+        # set pipeline
+        self.test_mode = test_mode
+        if test_mode:
+            pipeline = self.test_pipeline
+        else:
+            pipeline = self.train_pipeline
+
         dataset = PanopticSceneGraphDataset(
             ann_file=ann_file, 
-            pipeline=self.train_pipeline, 
+            pipeline=pipeline, 
             data_root=data_root,
             test_mode=test_mode,
             split=split,
         )
         self.dataset = ClassBalancedDataset(
             dataset=dataset,
-            oversample_thr=0.01, 
+            oversample_thr=oversample_thr, 
         )
 
-    def __len__(self, idx):
+    def __len__(self):
         return self.dataset.__len__()
 
     def __getitem__(self, idx):
@@ -107,9 +150,39 @@ class PSGRelationDataset(BasePSGDataset):
     """
     This Child dataset only outputs images and scene graph
     relations.
+
+    Returns:
+        - 4D `img` of shape (B, C, W, H).
+        - One-hot encoded relational triple-lets of shape (B, L, 3).
     """
+    def __init__(self, img_size: int = 384, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.img_size = img_size
+        self.resize = Resize(size=(img_size, img_size))
+        self.obj_cls = len(self.dataset.dataset.CLASSES)
+        self.pd_cls = len(self.dataset.dataset.PREDICATES)
+
     def __getitem__(self, idx):
         data = self.dataset.__getitem__(idx)
-        img = data["img"].data.float()
-        rels = data["gt_rels"].data.long()
-        return img, rels
+
+        # load image
+        img = data["img"]
+        if type(img) == tuple or type(img) == list:
+            img = torch.cat(img, dim=0)
+        img = img.data.float()
+        img = self.resize(img)
+
+        # load relational graph
+        rels = data["gt_rels"]
+        if type(rels) == tuple or type(rels) == list:
+            rels = torch.cat(rels, dim=0)
+        rels = rels.data.long()
+        rels = self.sort_func(rels)
+
+        # one-hot encoding
+        one_hot_rels = torch.cat([
+            F.one_hot(rels[..., 0], num_classes=self.obj_cls).float(),
+            F.one_hot(rels[..., 1], num_classes=self.pd_cls).float(),
+            F.one_hot(rels[..., 2], num_classes=self.obj_cls).float(),
+        ], dim=-1)
+        return img, one_hot_rels

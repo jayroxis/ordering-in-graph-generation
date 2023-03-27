@@ -64,7 +64,7 @@ class PadSequenceConstant:
             collated = tuple(padded)
             return collated
 
-    
+
     
 def extract_node_positions(G):
     """
