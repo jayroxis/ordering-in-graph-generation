@@ -22,8 +22,20 @@ def build_model(model_name: str, *args, **kwargs):
                 f"registed using in timm registry " + \
                 "\"timm.models.registry.register_model\"."
         raise ValueError(msg)
-    model_name = create_model(model_name, *args, **kwargs)
-    return model_name
+    if "lr" in kwargs:
+        lr = float(kwargs.pop("lr"))
+    else:
+        lr = None
+    if "weight_decay" in kwargs:
+        weight_decay = float(kwargs.pop("weight_decay"))
+    else:
+        weight_decay = None
+    model = create_model(model_name, *args, **kwargs)
+    if lr is not None:
+        model.lr = lr
+    if weight_decay is not None:
+        model.weight_decay = weight_decay
+    return model
 
 
 
@@ -87,3 +99,42 @@ def build_module_registry(config: dict, default_cfg: dict = {}):
         module_class = build_partial_class(cfg)
         module_registry[name] = module_class
     return module_registry
+
+
+def get_params_group(model, lr, weight_decay=0.0, **kwargs):
+    """
+    ! DANGER: do not call this function in a member function 
+    """
+    # check whether the model has any trainable parameters
+    has_grad = False
+    if hasattr(model, "parameters"):
+        if callable(getattr(model, "parameters")):
+            for param in model.parameters():
+                if param.requires_grad:
+                    has_grad = True
+                    break
+    if not has_grad:
+        return []
+    
+    # Get visual encoder parameters group
+    if hasattr(model, "lr"):
+        lr = model.lr
+    if hasattr(model, "weight_decay"):
+        weight_decay = model.weight_decay
+
+    lr = float(lr)
+    weight_decay = float(weight_decay)
+    
+    if hasattr(model, "get_params_group"):
+        params_group = model.get_params_group(
+            lr=lr, 
+            weight_decay=weight_decay, 
+            **kwargs
+        )
+    else:
+        params_group = [{
+            "params": model.parameters(), 
+            "lr": lr, 
+            "weight_decay": weight_decay
+        }]
+    return params_group

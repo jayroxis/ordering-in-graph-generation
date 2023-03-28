@@ -1,6 +1,12 @@
 
 # Planar graph datasets
-from .planar_graph import *
+from .planar_graph import RenderedPlanarGraphDataset
+from .scene_graph import PSGRelationDataset
+
+
+__all__ = [
+    "RenderedPlanarGraphDataset", "PSGRelationDataset"
+]
 
 
 def build_dataset(dataset_name: str, params: dict = {}):

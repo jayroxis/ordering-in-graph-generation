@@ -7,7 +7,7 @@
 import torch
 import torch.nn as nn
 
-from .misc import build_module_registry
+from .misc import build_module_registry, get_params_group
 from timm.models.registry import register_model
 
 
@@ -514,7 +514,7 @@ class GPT(nn.Module):
         return out[:, -1:]
     
     @torch.jit.ignore
-    def get_params_group(self, lr=1e-3, weight_decay=1e-4):
+    def get_params_group(self, lr=1e-3, weight_decay=1e-4, **kwargs):
         """
         Get the optimizer parameters for training the model.
 
@@ -528,9 +528,12 @@ class GPT(nn.Module):
                   the parameters and optimizer settings for a different parameter group.
         """
         # define the parameter groups for the optimizer
-        params = [
-            {"params": self.parameters(), "lr": lr, "weight_decay": weight_decay},
-        ]
-        return params
+        params_group = [{
+            "params": self.parameters(), 
+            "lr": float(lr), 
+            "weight_decay": float(weight_decay),
+            **kwargs
+        }]
+        return params_group
    
 

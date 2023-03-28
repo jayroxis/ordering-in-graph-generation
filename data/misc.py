@@ -64,7 +64,7 @@ class PadSequenceConstant:
             collated = tuple(padded)
             return collated
 
-    
+
     
 def extract_node_positions(G):
     """
@@ -147,6 +147,14 @@ class latent_sort:
         idx = torch.argsort(latent.squeeze())
         sorted_seq = seq[idx]
         return sorted_seq
+
+
+def no_sort(seq):
+    """
+    Simply no sorting.
+    """
+    return seq.clone()
+
 
 
 def svd_sort(seq):

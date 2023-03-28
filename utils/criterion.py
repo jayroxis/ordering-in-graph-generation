@@ -1,7 +1,13 @@
 
+
+
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
+import torchmetrics
+from timm.models.registry import register_model
 
 
 def permutation_invariant_errors(x, y, p=2, root=True, pad_value=-1):
@@ -56,7 +62,7 @@ def permutation_invariant_errors(x, y, p=2, root=True, pad_value=-1):
     return errors / N
 
 
-
+@register_model
 class UndirectedGraphLoss(nn.Module):
     """
     L1 + L2 Loss for node pairs on an undirected graph.
@@ -139,3 +145,122 @@ class UnorderedUndirectedGraphLoss(nn.Module):
         if torch.isnan(final_loss).any() or torch.isinf(final_loss).any():
             import pdb; pdb.set_trace()
         return final_loss.mean()
+    
+
+
+
+@register_model  
+class TorchMetricsMulticlass(nn.Module):
+    def __init__(self, metric: str, dim: int = -1, **kwargs):
+        super().__init__()
+        self.dim = dim
+        average = kwargs.get("average", "weighted")
+        self.metric = eval(metric)(
+            average=average,
+            **kwargs
+        )
+    
+    def _flatten_along_dim(self, x):
+        """
+        Flatten the tensor except the given dimension.
+        """
+        x = x.transpose(-1, self.dim)
+        x = x.flatten(end_dim=-2)
+        return x
+    
+    def forward(self, pred, true):
+        pred = self._flatten_along_dim(pred)
+        true = self._flatten_along_dim(true)
+        true = true / (
+            true.abs().sum(self.dim).unsqueeze(self.dim) + 1e-9
+        )
+        pred = pred / (
+            pred.abs().sum(self.dim).unsqueeze(self.dim) + 1e-9
+        )
+        true = torch.argmax(true, dim=self.dim)
+        return self.metric(preds=pred, target=true)
+
+
+
+@register_model
+class CrossEntropyWithNormalize(nn.CrossEntropyLoss):
+    """
+    Cross-Entropy Loss that Normalize the Target Labels.
+    """
+    def forward(self, input, target):
+        target = target / (target.abs().sum(-1).unsqueeze(-1) + 1e-9)
+        return super().forward(input=input, target=target)
+
+
+@register_model
+class DimensionwiseHybridLoss(nn.Module):
+    def __init__(self, config, **kwargs):
+        super(DimensionwiseHybridLoss, self).__init__()
+        self.loss_functions = []
+        for d in config:
+            loss_fn = eval(d["class"])(**d.get("params", {}))
+            start_idx, end_idx = d["index"].split(":")
+            start_idx = int(start_idx) if start_idx != ""  else None
+            end_idx = int(end_idx) if end_idx != ""  else None
+            weight = d.get("weight", 1.0)
+            self.loss_functions.append((loss_fn, weight, start_idx, end_idx))
+
+    def forward(self, pred, target):
+        loss = 0.0
+        for loss_fn, weight, start_idx, end_idx in self.loss_functions:
+            # Apply the corresponding loss function for the specified dimensions
+            loss = loss + weight * loss_fn(
+                pred[..., start_idx:end_idx], 
+                target[..., start_idx:end_idx]
+            )
+        return loss
+
+    def __repr__(self):
+        table = [(i, str(loss_fn), weight, start_idx, end_idx)
+                 for i, (loss_fn, weight, start_idx, end_idx) in enumerate(self.loss_functions)]
+        headers = ["Index", "Loss Function", "Weight", "Start Index", "End Index"]
+        repr_str = f"{self.__class__.__name__}():\n"
+        # Build the table string manually
+        repr_str += f"{headers[0]:^6} {headers[1]:^35} {headers[2]:^7} {headers[3]:^12} {headers[4]:^10}\n"
+        for row in table:
+            repr_str += f"{row[0]:^6} {row[1]:^35} {row[2]:^7} {row[3]:^12} {row[4]:^10}\n"
+        return repr_str
+
+
+@register_model
+class PSGRelationalLoss(nn.Module):
+    def __init__(
+        self,
+        object_classes: int = 133,
+        predicate_classes: int = 56,
+        loss_func: dict = {"class": "nn.CrossEntropyLoss"},
+    ):
+        """
+        This module is for target relational labels are not one-hot
+        encoded. 
+        For one-hot encoded labels. Use the `DimensionwiseHybridLoss`.
+        """
+        super(PSGRelationalLoss, self).__init__()
+        loss_class = eval(loss_func["class"])
+        loss_params = loss_func.get("params", {})
+        self.loss_func = loss_class(**loss_params)
+        self.obj_cls = object_classes
+        self.pd_cls = predicate_classes
+
+    def forward(self, pred, target):
+        # Convert target to one-hot
+        gt_triplelet = [
+            F.one_hot(target[..., 0], num_classes=self.obj_cls).float(),
+            F.one_hot(target[..., 1], num_classes=self.pd_cls).float(),
+            F.one_hot(target[..., 2], num_classes=self.obj_cls).float(),
+        ]
+        pred_triplelet = [
+            pred[..., :self.obj_cls],
+            pred[..., self.obj_cls:-self.obj_cls],
+            pred[..., -self.obj_cls:],
+        ]
+        loss = 0
+        for i in range(3):
+            print(pred_triplelet[i], gt_triplelet[i])
+            loss = loss + self.loss_func(pred_triplelet[i], gt_triplelet[i])
+        return loss
