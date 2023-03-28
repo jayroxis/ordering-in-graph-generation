@@ -66,7 +66,7 @@ model:
     conv_backbone: resnet50
     pretrained: True
     vis_enc_cfg:
-      lr: 2e-5
+      lr: 2e-4
       weight_decay: 1e-4
       dropout: 0.1
     seq_gen_cfg:

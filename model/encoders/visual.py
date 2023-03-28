@@ -200,15 +200,34 @@ class VisualEncoder(nn.Module):
         """
         # define the parameter groups for the optimizer
         if hasattr(self, "lr"):
-            lr = self.lr
+            lr = float(self.lr)
         if hasattr(self, "weight_decay"):
-            weight_decay = self.weight_decay
-        params = get_params_group(
-            model=self.encoder, 
-            lr=lr, 
-            weight_decay=weight_decay, 
-            **kwargs
-        )
+            weight_decay = float(self.weight_decay)
+
+        # pretrained model are set to use smaller learning rate
+        if self.pretrained:
+            params = get_params_group(
+                model=self.encoder, 
+                lr=lr / 10, 
+                weight_decay=weight_decay, 
+                **kwargs
+            )
+        else:
+            params = get_params_group(
+                model=self.encoder, 
+                lr=lr, 
+                weight_decay=weight_decay, 
+                **kwargs
+            )
+
+        params += [
+            {
+                "params": self.pos_embed.parameters(), 
+                "lr": lr, 
+                "weight_decay": 0, 
+                **kwargs
+            },
+        ]
         params += get_params_group(
             model=self.transformer_encoder, 
             lr=lr, 
@@ -221,14 +240,6 @@ class VisualEncoder(nn.Module):
             weight_decay=weight_decay, 
             **kwargs
         )
-        params += [
-            {
-                "params": self.pos_embed.parameters(), 
-                "lr": lr, 
-                "weight_decay": 0, 
-                **kwargs
-            },
-        ]
         return params
     
 
