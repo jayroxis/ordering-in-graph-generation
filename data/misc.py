@@ -86,7 +86,7 @@ class PadSequenceBinary:
         if isinstance(one_indices, int):
             one_indices = [one_indices]
         elif isinstance(one_indices, str):
-            one_indices = stoone_indicesp_idx.strip(" ").split(",")
+            one_indices = one_indices.strip(" ").split(",")
             one_indices = [int(i) for i in one_indices if i != ""]
         self.one_indices = one_indices
         
