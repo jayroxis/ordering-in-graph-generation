@@ -154,11 +154,13 @@ class PSGRelationDataset(BasePSGDataset):
     Returns:
         - 4D `img` of shape (B, C, W, H).
         - One-hot encoded relational triple-lets of shape (B, L, 3).
+            The relational triple-lets are (Object, Predicate, Object)
     """
-    def __init__(self, img_size: int = 384, *args, **kwargs):
+    def __init__(self, img_size: int = 384, one_hot: bool = True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.img_size = img_size
         self.resize = Resize(size=(img_size, img_size))
+        self.one_hot = one_hot
         self.obj_cls = len(self.dataset.dataset.CLASSES)
         self.pd_cls = len(self.dataset.dataset.PREDICATES)
 
@@ -180,9 +182,12 @@ class PSGRelationDataset(BasePSGDataset):
         rels = self.sort_func(rels)
 
         # one-hot encoding
-        one_hot_rels = torch.cat([
-            F.one_hot(rels[..., 0], num_classes=self.obj_cls).float(),
-            F.one_hot(rels[..., 1], num_classes=self.pd_cls).float(),
-            F.one_hot(rels[..., 2], num_classes=self.obj_cls).float(),
-        ], dim=-1)
-        return img, one_hot_rels
+        if self.one_hot:
+            one_hot_rels = torch.cat([
+                F.one_hot(rels[..., 0], num_classes=self.obj_cls).float(),
+                F.one_hot(rels[..., 1], num_classes=self.obj_cls).float(),
+                F.one_hot(rels[..., 2], num_classes=self.pd_cls + 1).float(),
+            ], dim=-1)
+            return img, one_hot_rels
+        else:
+            return img, rels
