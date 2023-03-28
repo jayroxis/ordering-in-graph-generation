@@ -209,8 +209,25 @@ class VisualEncoder(nn.Module):
             weight_decay=weight_decay, 
             **kwargs
         )
+        params += get_params_group(
+            model=self.transformer_encoder, 
+            lr=lr, 
+            weight_decay=weight_decay, 
+            **kwargs
+        )
+        params += get_params_group(
+            model=self.fc, 
+            lr=lr, 
+            weight_decay=weight_decay, 
+            **kwargs
+        )
         params += [
-            {"params": self.pos_embed.parameters(), "lr": lr, "weight_decay": 0},
+            {
+                "params": self.pos_embed.parameters(), 
+                "lr": lr, 
+                "weight_decay": 0, 
+                **kwargs
+            },
         ]
         return params
     

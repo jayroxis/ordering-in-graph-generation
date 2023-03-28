@@ -531,7 +531,8 @@ class GPT(nn.Module):
         params_group = [{
             "params": self.parameters(), 
             "lr": float(lr), 
-            "weight_decay": float(weight_decay)
+            "weight_decay": float(weight_decay),
+            **kwargs
         }]
         return params_group
    

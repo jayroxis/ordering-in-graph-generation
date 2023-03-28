@@ -154,7 +154,9 @@ class TorchMetricsMulticlass(nn.Module):
     def __init__(self, metric: str, dim: int = -1, **kwargs):
         super().__init__()
         self.dim = dim
+        average = kwargs.get("average", "weighted")
         self.metric = eval(metric)(
+            average=average,
             **kwargs
         )
     
