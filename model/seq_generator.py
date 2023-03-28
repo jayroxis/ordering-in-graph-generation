@@ -20,27 +20,32 @@ def conditional_sequence_generator(modality, model_config, **kwargs):
 class Sequence2Sequence(nn.Module):
     def __init__(
         self, 
+        prompt_seq_enc: dict,
         seq_enc: dict,
         seq_gen: dict,
         stop_detector: dict,
-        correction: dict,
+        correction: dict = {},
         **kwargs,
     ):
         """
-        Base model for Sequence-to-Sequence generation.
-        The model handles single modality data.
+        Base model for Conditional Sequence-to-Sequence generation.
 
         Args:
+            prompt_seq_enc : dict
+                Configuration for the prompt sequence encoder.
             seq_enc : dict
                 Configuration for the sequence encoder.
             seq_gen : dict
                 Configuration for the sequence generator.
             stop_detector : dict
                 Configuration for the stop token detector.
-            correction : dict
+            correction : dict (optional)
                 Configuration for the correction model to improve generated sequence.
         """
         super().__init__()
+
+        # Visual Encoder
+        self.prompt_seq_enc = build_model(**vis_enc)
         
         # Sequence Encoder
         self.seq_enc = build_model(**seq_enc)
@@ -57,26 +62,41 @@ class Sequence2Sequence(nn.Module):
         else:
             self.correction = nn.Identity()
     
-    def forward(self, seq):
+    def forward(self, prompt, seq=None):
         """
         Forward pass through the model.
 
         Args:
+        - img: the input image tensor
         - seq: the input sequence tensor 
+               (None for first token prediction)
 
         Returns:
         - generated sequence
         """
-        token = self.seq_enc(seq)
+        assert seq.ndim == 3, f"Input sequence expect 3D tensor but got {seq.ndim}-D."
 
-        num_out_token = seq.shape[1] + 1
+        # encode prompt sequence
+        prompt_emb = self.prompt_seq_enc(img)
+
+        # encode sequence and concatenate with prompt embeddings
+        if seq is not None:
+            seq_emb = self.seq_enc(seq)
+
+            # concatenate prompt and positional embeddings
+            token = torch.cat([prompt_emb, seq_emb], dim=1)
+            
+            num_out_token = seq.shape[1] + 1
+        else:
+            token = prompt_emb
+            num_out_token = 1
             
         # feed into gpt for causal modeling
         output = self.seq_gen(token)
         pred = output[:, -num_out_token:]
-        
         return pred
     
+
     def get_params_group(self, lr=2e-4, weight_decay=0, **kwargs):
         """
         Collect the params_group in the PyTorch optimizer input format 
@@ -87,10 +107,15 @@ class Sequence2Sequence(nn.Module):
         if hasattr(self, "weight_decay"):
             weight_decay = self.weight_decay
 
-        lr = float(lr)
-        weight_decay = float(weight_decay)
-
         params_group = []
+        
+        # Get prompt encoder parameters group
+        params_group += get_params_group(
+            self.prompt_seq_enc,
+            lr=lr,
+            weight_decay=weight_decay,
+            **kwargs
+        )
 
         # Get sequence encoder parameters group
         params_group += get_params_group(
@@ -99,6 +124,7 @@ class Sequence2Sequence(nn.Module):
             weight_decay=weight_decay,
             **kwargs
         )
+
         # Get sequence Generator parameters group
         params_group += get_params_group(
             self.seq_gen,
@@ -106,6 +132,7 @@ class Sequence2Sequence(nn.Module):
             weight_decay=weight_decay,
             **kwargs
         )
+
         # Get Stop Token Detector parameters group
         params_group += get_params_group(
             self.stop_detector,
@@ -124,8 +151,8 @@ class Sequence2Sequence(nn.Module):
         return params_group
     
     def generate(
-        self,
-        input_seq, 
+        self, 
+        img, 
         seq_len=100, 
     ):
         """
@@ -141,10 +168,11 @@ class Sequence2Sequence(nn.Module):
         - generated sequence
         """
         # encode visual features
-        token = self.seq_enc(input_seq)
+        visual_emb = self.vis_enc(img)
         self.seq_gen._init_buffer_()
         
         # initial forward
+        token = visual_emb
         output_seq = self.seq_gen.predict_next(token)
         
         # iterative forward
@@ -162,7 +190,6 @@ class Sequence2Sequence(nn.Module):
             stop_flag = self.stop_detector(output_seq)
             if stop_flag:
                 break
-
         output_seq = self.correction(output_seq)
         return output_seq
 

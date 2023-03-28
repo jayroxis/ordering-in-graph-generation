@@ -153,7 +153,7 @@ def no_sort(seq):
     """
     Simply no sorting.
     """
-    return seq.clone()
+    return seq
 
 
 

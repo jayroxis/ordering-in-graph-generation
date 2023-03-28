@@ -168,6 +168,7 @@ class TorchMetricsMulticlass(nn.Module):
         x = x.flatten(end_dim=-2)
         return x
     
+    @torch.no_grad()
     def forward(self, pred, true):
         pred = self._flatten_along_dim(pred)
         true = self._flatten_along_dim(true)
