@@ -106,7 +106,7 @@ model:
     seq_dtype: float
     stop_token: -1.0
     gpt_name: gpt_medium
-    conv_backbone: efficientnet_b0
+    conv_backbone: image_patching_16
     pretrained: False
 
   ema_model:

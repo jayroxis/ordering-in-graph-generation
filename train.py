@@ -2,7 +2,7 @@
 import os
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
-from lightning.pytorch.callbacks import ModelCheckpoint
+
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # This line is very IMPORTANT for expected Cluster behavior
@@ -18,7 +18,11 @@ from engine.model import *
 from utils.helpers import safe_load_yaml
 
 
+
 def main():
+    # set cudnn to False since we have data of different length
+    torch.backends.cudnn.benchmark=False
+
     # Parse Arguments
     arg_parser = ArgumentParserModule()
     args = arg_parser.parse_args()
@@ -40,11 +44,6 @@ def main():
         os.makedirs(save_dir)
     tb_logger = TensorBoardLogger(save_dir=save_dir)
 
-    
-    # saves checkpoints to 'my/path/' at every epoch
-    save_freq = train_config.get("save_evey_n_epoch", 10)
-    checkpoint_callback = ModelCheckpoint(every_n_epochs=save_freq)
-
     # Create PyTorch Lightning Trainer
     trainer = pl.Trainer(
         devices=args.gpu,
@@ -63,4 +62,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()

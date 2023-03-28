@@ -2,6 +2,7 @@
 import torch
 from data.dataset import build_dataset
 from data.misc import *
+from data.async_loader import AsynchronousLoader
 
 
 class StandardDataModule:
@@ -51,5 +52,17 @@ class StandardDataModule:
             collate_fn = config["params"].get("collate_fn")
             collate_fn = eval(collate_fn["class"])(**collate_fn["params"])
             config["params"]["collate_fn"] = collate_fn
-        dataloader = DATALOADER(dataset, **config["params"])
+
+        # Asynchronous Dataloader
+        if "async_load" in config["params"]:
+            async_load = config["params"].pop("async_load")
+            queue_size = async_load.get("queue_size", 10)
+            device = async_load.get("device", "cpu")
+            dataloader = AsynchronousLoader(
+                DATALOADER(dataset, **config["params"]), 
+                device=torch.device(device),
+                q_size=queue_size
+            )
+        else:
+            dataloader = DATALOADER(dataset, **config["params"])
         return dataloader
