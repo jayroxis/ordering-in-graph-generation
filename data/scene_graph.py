@@ -184,9 +184,9 @@ class PSGRelationDataset(BasePSGDataset):
         # one-hot encoding
         if self.one_hot:
             one_hot_rels = torch.cat([
-                F.one_hot(rels[..., 0], num_classes=self.obj_cls).float(),
-                F.one_hot(rels[..., 1], num_classes=self.obj_cls).float(),
-                F.one_hot(rels[..., 2], num_classes=self.pd_cls + 1).float(),
+                F.one_hot(rels[..., 0], num_classes=self.obj_cls + 1).float(),
+                F.one_hot(rels[..., 1], num_classes=self.obj_cls + 1).float(),
+                F.one_hot(rels[..., 2] - 1, num_classes=self.pd_cls + 1).float(), # need to - 1
             ], dim=-1)
             return img, one_hot_rels
         else:

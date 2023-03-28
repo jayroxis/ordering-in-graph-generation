@@ -31,13 +31,14 @@ data:
     class: torch.utils.data.DataLoader
     params:
       batch_size: 100     # effective batch size = batch_size * num_gpu
-      num_workers: 16
-      pin_memory: False
+      num_workers: 64
+      pin_memory: True
       shuffle: True
+      persistent_workers: True
       collate_fn:
-        class: PadSequenceConstant
+        class: PadSequenceBinary
         params:
-          pad_value: 1.0
+          one_indices: 133, 267, 324     # dimensions for stop token
 
   val_loader:
     class: torch.utils.data.DataLoader
@@ -47,9 +48,9 @@ data:
       pin_memory: False
       shuffle: False
       collate_fn:
-        class: PadSequenceConstant
+        class: PadSequenceBinary
         params:
-          pad_value: 1.0
+          one_indices: 133, 267, 324     # dimensions for stop token
 
 # ====================== Model Configs =========================
 
@@ -58,7 +59,7 @@ model:
   class: vision_gpt
   params:
     in_chans: 3
-    output_dim: 323 
+    output_dim: 325
     emb_dim: 1024
     seq_dtype: float
     stop_token: 1.0
@@ -71,6 +72,10 @@ model:
       dropout: 0.1
     seq_gen_cfg:
       dropout: 0.1
+    stop_detector_cfg:
+      model_name: StopTokenDetectorCategorical
+      stop_idx: 133, 267, 324 
+      threshold: 0.2
 
   ema_model:
     class: ModelEmaV2
@@ -104,160 +109,159 @@ training:
     enable_checkpointing: True
     check_val_every_n_epoch: 1
     log_every_n_steps: 50
-    # resume_from_checkpoint: runs/lightning_logs/version_0/checkpoints/epoch=87-step=28776.ckpt
   
   # ------------------- Training Metrics -----------------------
   train_metrics:
     obj_1_ce_loss:    #  object 1 (subject)
       class: CrossEntropyWithNormalize
       weight: 0.33
-      index: 0:133
+      index: 0:134
     obj_2_ce_loss: 
       class: CrossEntropyWithNormalize
       weight: 0.33
-      index: 133:266
+      index: 134:268
     predicate_ce_loss:    #  object 2  (object)
       class: CrossEntropyWithNormalize
       weight: 0.33
-      index: 266:323 
+      index: 268:325
     obj_1_accuracy:
       class: TorchMetricsMulticlass
       weight: 0.0
       params:
         metric: torchmetrics.classification.MulticlassAccuracy
         num_classes: 133
-      index: 0:133
+      index: 0:134
     obj_2_accuracy: 
       class: TorchMetricsMulticlass
       weight: 0.0
       params:
         metric: torchmetrics.classification.MulticlassAccuracy
         num_classes: 133
-      index: 133:266
+      index: 134:268
     predicate_accuracy:
       class: TorchMetricsMulticlass
       weight: 0.0
       params:
         metric: torchmetrics.classification.MulticlassAccuracy
         num_classes: 57
-      index: 266:323 
+      index: 268:325
     # obj_1_f1_score:
     #   class: TorchMetricsMulticlass
     #   weight: 0.0
     #   params:
     #     metric: torchmetrics.classification.MulticlassF1Score
     #     num_classes: 133
-    #   index: 0:133
+    #   index: 0:134
     # obj_2_f1_score: 
     #   class: TorchMetricsMulticlass
     #   weight: 0.0
     #   params:
     #     metric: torchmetrics.classification.MulticlassF1Score
     #     num_classes: 133
-    #   index: 133:266
+    #   index: 134:268
     # predicate_f1_score:
     #   class: TorchMetricsMulticlass
     #   weight: 0.0
     #   params:
     #     metric: torchmetrics.classification.MulticlassF1Score
     #     num_classes: 57
-    #   index: 266:323 
+    #   index: 268:325
     # obj_1_auroc:
     #   class: TorchMetricsMulticlass
     #   weight: 0.0
     #   params:
     #     metric: torchmetrics.classification.MulticlassAUROC
     #     num_classes: 133
-    #   index: 0:133
+    #   index: 0:134
     # obj_2_auroc: 
     #   class: TorchMetricsMulticlass
     #   weight: 0.0
     #   params:
     #     metric: torchmetrics.classification.MulticlassAUROC
     #     num_classes: 133
-    #   index: 133:266
+    #   index: 134:268
     # predicate_auroc:
     #   class: TorchMetricsMulticlass
     #   weight: 0.0
     #   params:
     #     metric: torchmetrics.classification.MulticlassAUROC
     #     num_classes: 57
-    #   index: 266:323 
+    #   index: 268:325
 
   # ------------------- Evaluation Metrics -----------------------
   eval_metrics:
     obj_1_ce_loss:    #  object 1 (subject)
       class: CrossEntropyWithNormalize
       weight: 0.33
-      index: 0:133
+      index: 0:134
     obj_2_ce_loss: 
       class: CrossEntropyWithNormalize
       weight: 0.33
-      index: 133:266
+      index: 134:268
     predicate_ce_loss:    #  object 2  (object)
       class: CrossEntropyWithNormalize
       weight: 0.33
-      index: 266:323 
+      index: 268:325
     obj_1_accuracy:
       class: TorchMetricsMulticlass
       weight: 0.0
       params:
         metric: torchmetrics.classification.MulticlassAccuracy
         num_classes: 133
-      index: 0:133
+      index: 0:134
     obj_2_accuracy: 
       class: TorchMetricsMulticlass
       weight: 0.0
       params:
         metric: torchmetrics.classification.MulticlassAccuracy
         num_classes: 133
-      index: 133:266
+      index: 134:268
     predicate_accuracy:
       class: TorchMetricsMulticlass
       weight: 0.0
       params:
         metric: torchmetrics.classification.MulticlassAccuracy
         num_classes: 57
-      index: 266:323 
+      index: 268:325
     # obj_1_f1_score:
     #   class: TorchMetricsMulticlass
     #   weight: 0.0
     #   params:
     #     metric: torchmetrics.classification.MulticlassF1Score
     #     num_classes: 133
-    #   index: 0:133
+    #   index: 0:134
     # obj_2_f1_score: 
     #   class: TorchMetricsMulticlass
     #   weight: 0.0
     #   params:
     #     metric: torchmetrics.classification.MulticlassF1Score
     #     num_classes: 133
-    #   index: 133:266
+    #   index: 134:268
     # predicate_f1_score:
     #   class: TorchMetricsMulticlass
     #   weight: 0.0
     #   params:
     #     metric: torchmetrics.classification.MulticlassF1Score
     #     num_classes: 57
-    #   index: 266:323 
+    #   index: 268:325
     # obj_1_auroc:
     #   class: TorchMetricsMulticlass
     #   weight: 0.0
     #   params:
     #     metric: torchmetrics.classification.MulticlassAUROC
     #     num_classes: 133
-    #   index: 0:133
+    #   index: 0:134
     # obj_2_auroc: 
     #   class: TorchMetricsMulticlass
     #   weight: 0.0
     #   params:
     #     metric: torchmetrics.classification.MulticlassAUROC
     #     num_classes: 133
-    #   index: 133:266
+    #   index: 134:268
     # predicate_auroc:
     #   class: TorchMetricsMulticlass
     #   weight: 0.0
     #   params:
     #     metric: torchmetrics.classification.MulticlassAUROC
     #     num_classes: 57
-    #   index: 266:323 
+    #   index: 268:325

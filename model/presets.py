@@ -11,12 +11,11 @@ def vision_gpt(
     in_chans: int = 3,
     emb_dim: int = 1024,
     output_dim: int = 4,
-    seq_dtype: str = "float",
-    stop_token: int = -1.0,
     gpt_name: str = "gpt_medium",
     conv_backbone: str = "resnet50",
     vit_backbone: str = None,
     pretrained: bool = False,
+    seq_enc: str = "MLPEncoder",
     vis_enc_cfg: dict = {},
     seq_gen_cfg: dict = {},
     seq_enc_cfg: dict = {},
@@ -76,7 +75,7 @@ def vision_gpt(
 
     # Sequence Encoder
     seq_enc = dict(
-        model_name="MLPEncoder",
+        model_name=seq_enc,
         input_dim=output_dim, 
         output_dim=emb_dim, 
         hidden_dim=emb_dim, 
@@ -93,22 +92,15 @@ def vision_gpt(
     )
 
     # Stop Token Encoder
-    if seq_dtype == "categorical":
-        stop_detector = dict(
-            model_name="stop_token_dector",
-            dtype=seq_dtype,
-            stop_idx=int(stop_token), 
-            threshold=0.5,
-            **stop_detector_cfg
-        )
-    else:
-        stop_detector = dict(
-            model_name="stop_token_dector",
-            dtype=seq_dtype,
-            stop_value=float(stop_token), 
-            threshold=0.5,
-            **stop_detector_cfg
-        )
+    stop_detector_cfg = dict(
+        model_name="stop_token_dector",
+        dtype=seq_dtype,
+        stop_idx=int(stop_token), 
+        threshold=0.5,
+    ).update(stop_detector_cfg)
+    stop_detector = dict(
+        **stop_detector_cfg
+    )
     
     # build final model from all configs
     model_config = dict(
