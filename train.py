@@ -2,6 +2,7 @@
 import os
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
+from lightning.pytorch.callbacks import ModelCheckpoint
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # This line is very IMPORTANT for expected Cluster behavior
@@ -38,6 +39,11 @@ def main():
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     tb_logger = TensorBoardLogger(save_dir=save_dir)
+
+    
+    # saves checkpoints to 'my/path/' at every epoch
+    save_freq = train_config.get("save_evey_n_epoch", 10)
+    checkpoint_callback = ModelCheckpoint(every_n_epochs=save_freq)
 
     # Create PyTorch Lightning Trainer
     trainer = pl.Trainer(
