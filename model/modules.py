@@ -91,7 +91,7 @@ class StopTokenDetectorCategorical(nn.Module):
     """
     Stop token detector for float sequence.
     """
-    def __init__(self, stop_idx, threshold=0.8):
+    def __init__(self, stop_idx, threshold=0.8, **kwargs):
         super(StopTokenDetectorCategorical, self).__init__()
         if isinstance(stop_idx, int):
             self.stop_idx = [stop_idx]
