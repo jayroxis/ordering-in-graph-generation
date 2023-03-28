@@ -107,7 +107,7 @@ class PadSequenceBinary:
             padding_value=0  # Initialize with all zeros
         )
         for i in self.one_indices:
-            seq_padded[..., i] = 1  # Set indices to one
+            seq_padded[:, i] = 1  # Set indices to one
         return seq_padded
 
     def __call__(self, batch):
