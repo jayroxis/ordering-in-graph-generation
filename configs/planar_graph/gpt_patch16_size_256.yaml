@@ -103,11 +103,13 @@ model:
     output_dim: 4
     emb_dim: 512
     img_size: 256
-    seq_dtype: float
-    stop_token: -1.0
     gpt_name: gpt_medium
     conv_backbone: image_patching_16
     pretrained: False
+    stop_detector_cfg:
+      model_name: StopTokenDetectorFloat
+      stop_value: -1.0
+      threshold: 0.8
 
   ema_model:
     class: ModelEmaV2

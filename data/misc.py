@@ -7,6 +7,7 @@ import networkx as nx
 from utils.helpers import shuffle_tensor
 
 
+
 class PadSequenceConstant:
     """
     A collate function for PyTorch DataLoader that pads sequences in batches to the same length.
@@ -53,6 +54,79 @@ class PadSequenceConstant:
             return collated
         else:
             # If the batch is a tuple of tuple or list of tensors, for example, 
+            # each row has two tensors (X, Y) as input and label.
+            transposed = list(map(list, zip(*batch)))
+
+            # Pad each list of tensors to the same length
+            padded = []
+            for items in transposed:
+                padded.append(self._pad_sequence(items))
+            # Return a tuple of padded tensors, one for each element of the original tuples
+            collated = tuple(padded)
+            return collated
+
+
+
+class PadSequenceBinary:
+    """
+    A collate function for PyTorch DataLoader that pads sequences 
+    in batches with binary values.
+
+    Supports both list/tuple of tensors and single tensor batches.
+    """
+    def __init__(self, one_indices):
+        """
+        Initializes the PadSequenceBinary instance with the indices 
+        to set to one and the rest to zero.
+        Args:
+            one_indices: The indices in the last dimension of the 
+            tensor to set to one. Can be a single integer or a list 
+            of integers.
+        """
+        if isinstance(one_indices, int):
+            one_indices = [one_indices]
+        self.one_indices = one_indices
+        
+    def _pad_sequence(self, seq):
+        """
+        Pads a list of sequences with binary values, setting the 
+        indices in self.one_indices to one.
+        Args:
+            seq: A list of PyTorch tensors representing a batch of 
+            sequences.
+        Returns:
+            The padded tensor of shape (batch_size, max_seq_len, 
+            feature_dim).
+        """
+        seq_padded = pad_sequence(
+            seq,
+            batch_first=True,
+            padding_value=0  # Initialize with all zeros
+        )
+        for i in self.one_indices:
+            seq_padded[..., i] = 1  # Set indices to one
+        return seq_padded
+
+    def __call__(self, batch):
+        """
+        Pads a batch of sequences with binary values.
+        Args:
+            batch: A list/tuple of PyTorch tensors representing 
+            a batch of sequences
+                or a single PyTorch tensor representing a sequence.
+        Returns:
+            A tuple of padded tensors of shape (batch_size, max_seq_len, 
+            feature_dim),
+            where each tensor corresponds to the i-th element of the 
+            original tuples in the batch input.
+        """
+        if isinstance(batch[0], torch.Tensor):
+            # If the batch is a tuple of tensors, pad it directly
+            tensors = list(batch)
+            collated = self._pad_sequence(tensors)
+            return collated
+        else:
+            # If the batch is a tuple of tuple or list of tensors, for example,
             # each row has two tensors (X, Y) as input and label.
             transposed = list(map(list, zip(*batch)))
 

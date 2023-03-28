@@ -60,15 +60,8 @@ class CasualAttentionMask(nn.Module):
         return causal_mask
 
 
+
 @register_model
-def stop_token_dector(dtype: str, *args, **kwargs):
-    if dtype == "int" or dtype == "categorical":
-        model = StopTokenDetectorCategorical(*args, **kwargs)
-    else:
-        model = StopTokenDetectorFloat(*args, **kwargs)
-    return model
-
-
 class StopTokenDetectorFloat(nn.Module):
     """
     Stop token detector for float sequence.
@@ -100,7 +93,15 @@ class StopTokenDetectorCategorical(nn.Module):
     """
     def __init__(self, stop_idx, threshold=0.8):
         super(StopTokenDetectorCategorical, self).__init__()
-        self.stop_idx = stop_idx
+        if isinstance(stop_idx, int):
+            self.stop_idx = [stop_idx]
+        elif isinstance(stop_idx, list):
+            self.stop_idx = stop_idx
+        elif isinstance(stop_idx, str):
+            self.stop_idx = stop_idx.strip(" ").split(",")
+            self.stop_idx = [int(i) for i in self.stop_idx if i != ""]
+        else:
+            raise ValueError("stop_idx has to be a single integer or a list of integers.")
         self.threshold = threshold
 
     def forward(self, sequence):
@@ -113,11 +114,10 @@ class StopTokenDetectorCategorical(nn.Module):
                 "The input has to be a 3D sequence (B, L, D)" + \
                 " or a single token (B, D)."
             )
-        softmax_probs = nn.functional.softmax(last_tokens, dim=-1)
-        predicted_indices = torch.argmax(softmax_probs, dim=-1)
-        max_probs, _ = torch.max(softmax_probs, dim=-1)
-        stop_flag = torch.all(predicted_indices == self.stop_idx)
-        if max_probs >= self.threshold:
-            return stop_flag
-        else:
-            return False
+        if (last_tokens.sum(-1) != 1.0).any():
+            if (last_tokens > 0).all():
+                last_tokens = last_tokens / last_tokens.sum(-1).unsqueeze(-1)
+            else:
+                last_tokens = last_tokens.softmax(-1)
+        above_threshold = last_tokens[..., self.stop_idx] > self.threshold
+        return above_threshold.all().item()
