@@ -31,7 +31,6 @@ def vision_gpt(
         emb_dim     (int):          Dimension of the embedding used to represent visual 
                                         features and generate sequences.
         output_dim  (int):          Dimension of the output sequences.
-        seq_dtype   (str):          Data type of the generated sequence. Can be "float" or "categorical".
         stop_token  (float or int): Value used to indicate the end of a generated sequence.
         gpt_name    (str):          Setting of the GPT model to use.
         conv_backbone (str):        Name of the convolutional backbone model to use for 
@@ -92,12 +91,6 @@ def vision_gpt(
     )
 
     # Stop Token Encoder
-    stop_detector_cfg = dict(
-        model_name="stop_token_dector",
-        dtype=seq_dtype,
-        stop_idx=int(stop_token), 
-        threshold=0.5,
-    ).update(stop_detector_cfg)
     stop_detector = dict(
         **stop_detector_cfg
     )
