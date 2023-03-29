@@ -112,15 +112,15 @@ training:
   # ------------------- Training Metrics -----------------------
   train_metrics:
     obj_1_ce_loss:    #  object 1 (subject)
-      class: CrossEntropyWithNormalize
+      class: nn.CrossEntropyLoss
       weight: 0.33
       index: 0:134
     obj_2_ce_loss: 
-      class: CrossEntropyWithNormalize
+      class: nn.CrossEntropyLoss
       weight: 0.33
       index: 134:268
     predicate_ce_loss:    #  object 2  (object)
-      class: CrossEntropyWithNormalize
+      class: nn.CrossEntropyLoss
       weight: 0.33
       index: 268:325
     obj_1_accuracy:
@@ -190,15 +190,15 @@ training:
   # ------------------- Evaluation Metrics -----------------------
   eval_metrics:
     obj_1_ce_loss:    #  object 1 (subject)
-      class: CrossEntropyWithNormalize
+      class: nn.CrossEntropyLoss
       weight: 0.33
       index: 0:134
     obj_2_ce_loss: 
-      class: CrossEntropyWithNormalize
+      class: nn.CrossEntropyLoss
       weight: 0.33
       index: 134:268
     predicate_ce_loss:    #  object 2  (object)
-      class: CrossEntropyWithNormalize
+      class: nn.CrossEntropyLoss
       weight: 0.33
       index: 268:325
     obj_1_accuracy:
