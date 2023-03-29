@@ -1,0 +1,260 @@
+
+# ====================== Data Configs =========================
+
+class: VisionSequenceModel
+
+data:
+  name: PanopticSceneGraph
+  class: StandardDataModule
+
+  train_set:
+    class: PSGRelationDataset
+    params:
+      sort_func: no_sort
+      ann_file: /data/coco2017/annotations/psg.json
+      data_root: /data/coco2017/
+      test_mode: False
+      split: train
+      img_size: 256
+
+  val_set:
+    class: PSGRelationDataset
+    params:
+      sort_func: no_sort
+      ann_file: /data/coco2017/annotations/psg.json
+      data_root: /data/coco2017/
+      test_mode: True
+      split: test
+      img_size: 256
+
+  train_loader:
+    class: torch.utils.data.DataLoader
+    params:
+      batch_size: 100     # effective batch size = batch_size * num_gpu
+      num_workers: 64
+      pin_memory: True
+      shuffle: True
+      persistent_workers: True
+      collate_fn:
+        class: PadSequenceBinary
+        params:
+          one_indices: 134, 267, 324     # dimensions for stop token
+
+  val_loader:
+    class: torch.utils.data.DataLoader
+    params:
+      batch_size: 100     # effective batch size = batch_size * num_gpu
+      num_workers: 8
+      pin_memory: False
+      shuffle: False
+      collate_fn:
+        class: PadSequenceBinary
+        params:
+          one_indices: 134, 267, 324     # dimensions for stop token
+
+# ====================== Model Configs =========================
+
+model:
+  name: VisualGraphGPT
+  class: vision_gpt
+  params:
+    in_chans: 3
+    output_dim: 325
+    emb_dim: 1024
+    gpt_name: gpt_large
+    conv_backbone: resnet50
+    pretrained: True
+    vis_enc_cfg:
+      lr: 2e-4
+      weight_decay: 1e-4
+      dropout: 0.1
+    seq_gen_cfg:
+      dropout: 0.0
+    stop_detector_cfg:
+      model_name: StopTokenDetectorCategorical
+      stop_idx: 134, 267, 324 
+      threshold: 0.2
+
+  ema_model:
+    class: ModelEmaV2
+    params: 
+      decay: 0.995
+
+# ==================== Training Configs =========================
+training:
+  save_dir: ./runs/
+  optimizer:
+    class: torch.optim.AdamW
+    params:
+      lr: 2e-4
+      weight_decay: 5e-4
+
+  scheduler:
+    class: torch.optim.lr_scheduler.OneCycleLR
+    params:
+      max_lr: 2e-4
+      total_steps: 1000            # should be the same as training epochs
+      pct_start: 0.01
+      div_factor: 25.0
+      final_div_factor: 10000.0
+      anneal_strategy: 'cos'
+
+  params:                    # arguments for PyTorch Lightning Trainer
+    max_epochs: 1000         # should be the same as training epochs
+    accelerator: gpu
+    precision: 16
+    strategy: ddp_find_unused_parameters_false
+    enable_checkpointing: True
+    check_val_every_n_epoch: 1
+    log_every_n_steps: 50
+    gradient_clip_val: 0.5
+
+  # ------------------- Training Metrics -----------------------
+  train_metrics:
+    bce_loss:    
+      class: nn.BCEWithLogitsLoss
+      weight: 1.0
+    obj_1_accuracy:
+      class: TorchMetricsMulticlass
+      weight: 0.0
+      params:
+        metric: torchmetrics.classification.MulticlassAccuracy
+        num_classes: 134
+      index: 0:134
+    obj_2_accuracy: 
+      class: TorchMetricsMulticlass
+      weight: 0.0
+      params:
+        metric: torchmetrics.classification.MulticlassAccuracy
+        num_classes: 134
+      index: 134:268
+    predicate_accuracy:
+      class: TorchMetricsMulticlass
+      weight: 0.0
+      params:
+        metric: torchmetrics.classification.MulticlassAccuracy
+        num_classes: 57
+      index: 268:325
+    # obj_1_f1_score:
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassF1Score
+    #     num_classes: 134
+    #   index: 0:134
+    # obj_2_f1_score: 
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassF1Score
+    #     num_classes: 134
+    #   index: 134:268
+    # predicate_f1_score:
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassF1Score
+    #     num_classes: 57
+    #   index: 268:325
+    # obj_1_auroc:
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassAUROC
+    #     num_classes: 134
+    #   index: 0:134
+    # obj_2_auroc: 
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassAUROC
+    #     num_classes: 134
+    #   index: 134:268
+    # predicate_auroc:
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassAUROC
+    #     num_classes: 57
+    #   index: 268:325
+
+  # ------------------- Evaluation Metrics -----------------------
+  eval_metrics:
+    bce_loss:    
+      class: nn.BCEWithLogitsLoss
+      weight: 1.0
+    obj_1_ce_loss:    #  object 1 (subject)
+      class: nn.CrossEntropyLoss
+      weight: 0.0
+      index: 0:134
+    obj_2_ce_loss: 
+      class: nn.CrossEntropyLoss
+      weight: 0.0
+      index: 134:268
+    predicate_ce_loss:    #  object 2  (object)
+      class: nn.CrossEntropyLoss
+      weight: 0.0
+      index: 268:325
+    obj_1_accuracy:
+      class: TorchMetricsMulticlass
+      weight: 0.0
+      params:
+        metric: torchmetrics.classification.MulticlassAccuracy
+        num_classes: 134
+      index: 0:134
+    obj_2_accuracy: 
+      class: TorchMetricsMulticlass
+      weight: 0.0
+      params:
+        metric: torchmetrics.classification.MulticlassAccuracy
+        num_classes: 134
+      index: 134:268
+    predicate_accuracy:
+      class: TorchMetricsMulticlass
+      weight: 0.0
+      params:
+        metric: torchmetrics.classification.MulticlassAccuracy
+        num_classes: 57
+      index: 268:325
+    # obj_1_f1_score:
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassF1Score
+    #     num_classes: 134
+    #   index: 0:134
+    # obj_2_f1_score: 
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassF1Score
+    #     num_classes: 134
+    #   index: 134:268
+    # predicate_f1_score:
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassF1Score
+    #     num_classes: 57
+    #   index: 268:325
+    # obj_1_auroc:
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassAUROC
+    #     num_classes: 134
+    #   index: 0:134
+    # obj_2_auroc: 
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassAUROC
+    #     num_classes: 134
+    #   index: 134:268
+    # predicate_auroc:
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassAUROC
+    #     num_classes: 57
+    #   index: 268:325
