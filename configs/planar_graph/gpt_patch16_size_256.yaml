@@ -73,7 +73,7 @@ training:
   params:                   # arguments for PyTorch Lightning Trainer
     max_epochs: 1000         # should be the same as training epochs
     accelerator: gpu
-    precision: 16
+    precision: 32
     strategy: ddp_find_unused_parameters_false
     enable_checkpointing: True
     check_val_every_n_epoch: 1
