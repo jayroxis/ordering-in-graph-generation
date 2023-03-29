@@ -1,20 +1,20 @@
 # GraphGPT
 A minimal implementation of GraphGPT for Vision-Graph generation.
 
-# Commands
+## Commands
 To monitor jobs on ARC: 
 ```cmd
 watch -n1 "squeue -u jayroxis --format=\"%.10i %.10P %.30j %.8u %.8T %.8M %.10l %12R\""
 ```
 
-# Datasets
+## Datasets
 
-## Topological Graph Generation From Visual Inputs
+### Topological Graph Generation From Visual Inputs
 **Image to Topological Graph** (Proposed in This Work): [Planar_Graph](data/planar_graph.py).
 
 ***Description***: This is a synthetic dataset used in this paper for learning a 2D topoligical planar graph from its rendered image. Models are expected to predict not only the graph connectivity but also the node coordinates.
 
-## Scene Graph Dataset For Visual Understanding
+### Scene Graph Dataset For Visual Understanding
 **Panoptic Scene Graph Dataset** (Based On COCO-2017): [PSG](https://github.com/Jingkang50/OpenPSG).
 
 ***Description***: The Panoptic Scene Graph Generation (PSG) Task aims to interpret a complex scene image with a scene graph representation, with each node in the scene graph grounded by its pixel-accurate segmentation mask in the image. To promote comprehensive scene understanding, the authors take into account all the content in the image, including "things" and "stuff", to generate the scene graph. However, this work does not involve object detection or segmentation.
@@ -29,7 +29,7 @@ watch -n1 "squeue -u jayroxis --format=\"%.10i %.10P %.30j %.8u %.8T %.8M %.10l 
 }
 ```
 
-## Molecule Dataset For Molecule Structure Prediction
+### Molecule Dataset For Molecule Structure Prediction
 **Molecular Sets** (Based on ZINC): [MOSES](https://graphgt.github.io/molecule.html).
 
 ***Description***: Molecular Sets (MOSES) is a benchmark platform for distribution learning based molecule generation. Within this benchmark, MOSES provides a cleaned dataset of molecules that are ideal of optimization. It is processed from the ZINC Clean Leads dataset.
@@ -53,7 +53,7 @@ watch -n1 "squeue -u jayroxis --format=\"%.10i %.10P %.30j %.8u %.8T %.8M %.10l 
 } 
 ```
 
-## Circuit Graph For Automatic EDA
+### Circuit Graph For Automatic EDA
 
 
 **Electronic Circuit Graph Dataset**: [ECGD](https://github.com/hehaodele/circuit-gnn).
@@ -69,15 +69,16 @@ watch -n1 "squeue -u jayroxis --format=\"%.10i %.10P %.30j %.8u %.8T %.8M %.10l 
   year={2019}
 }
 ```
-# Notes
+## Notes
 
 ### Why Do We Adopt **Binary Cross-Entropy (BCE)** Loss Instead of **Cross-Entropy (CE)** Loss on Scene Graph Tasks.
 
 A good reading material: [Mosaic ResNet Deep Dive](https://www.mosaicml.com/blog/mosaic-resnet-deep-dive).
 
-The Binary-CE loss, as shown in [ResNet Strikes Bac [1]](https://arxiv.org/abs/2110.00476) and [Beyer et al., 2020 [2]](https://arxiv.org/abs/2006.07159), has demonstrate it as a better to-go option than the Multiclass-CE loss.
+The Binary-CE loss, as shown in [ResNet Strikes Back [1]](https://arxiv.org/abs/2110.00476) and [Are we done with ImageNet? [2]](https://arxiv.org/abs/2006.07159), has demonstrate it as a better to-go option than the Multiclass-CE loss.
 
 ```bibtex
+# ResNet Strikes Back
 @article{wightman2021resnet,
   title={ResNet strikes back: An improved training procedure in timm},
   author={Wightman, Ross and Touvron, Hugo and J{\'e}gou, Herv{\'e}},
@@ -86,8 +87,7 @@ The Binary-CE loss, as shown in [ResNet Strikes Bac [1]](https://arxiv.org/abs/2
   archivePrefix = {arXiv},
   eprint={2110.00476}
 }
-```
-```bibtex
+# Are we done with ImageNet?
 @article{beyer2020imagenet,
   title={Are we done with ImageNet?},
   author={Beyer, Lucas and H{\'e}naff, Olivier J and Kolesnikov, Alexander and Zhai, Xiaohua and van den Oord, Aaron},
