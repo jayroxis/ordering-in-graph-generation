@@ -77,10 +77,26 @@ A good reading material: [Mosaic ResNet Deep Dive](https://www.mosaicml.com/blog
 
 The Binary-CE loss, as shown in [ResNet Strikes Bac [1]](https://arxiv.org/abs/2110.00476) and [Beyer et al., 2020 [2]](https://arxiv.org/abs/2006.07159), has demonstrate it as a better to-go option than the Multiclass-CE loss.
 
-    [1] Wightman, R., Touvron, H., & J'egou, H. (2021). ResNet strikes back: An improved training procedure in timm. ArXiv, abs/2110.00476.
-
-    [2] Beyer, L., H'enaff, O.J., Kolesnikov, A., Zhai, X., & Oord, A.V. (2020). Are we done with ImageNet? ArXiv, abs/2006.07159.
-
+```bibtex
+@article{wightman2021resnet,
+  title={ResNet strikes back: An improved training procedure in timm},
+  author={Wightman, Ross and Touvron, Hugo and J{\'e}gou, Herv{\'e}},
+  journal={arXiv preprint arXiv:2110.00476},
+  year={2021},
+  archivePrefix = {arXiv},
+  eprint={2110.00476}
+}
+```
+```bibtex
+@article{beyer2020imagenet,
+  title={Are we done with ImageNet?},
+  author={Beyer, Lucas and H{\'e}naff, Olivier J and Kolesnikov, Alexander and Zhai, Xiaohua and van den Oord, Aaron},
+  journal={arXiv preprint arXiv:2006.07159},
+  year={2020},
+  archivePrefix = {arXiv},
+  eprint={2006.07159}
+}
+```
 ### Other Possible Improvements:
 
 BlurPool, EMA, FixRes, Label Smoothing, and Progressive Image Resizing; it also uses the FFCV dataloader and Channels Last memory format.
