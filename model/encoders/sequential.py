@@ -24,6 +24,9 @@ _default_cfg = {
     "pos_emb": {
         "class": "FourierEmbedding",
     },
+    "pos_enc": {
+        "class": "FourierEncoder1D",
+    }
 }
 
 
@@ -230,7 +233,7 @@ class TransformerEncoder(nn.Module):
         module_config: dict = {}, 
         **kwargs,
     ):
-        super(VisualEncoder, self).__init__()
+        super(TransformerEncoder, self).__init__()
 
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -243,10 +246,10 @@ class TransformerEncoder(nn.Module):
         )
         FeedForwardLayer = self.module_registry["ff_layer"]
         Activation = self.module_registry["activation"]
-        PositionalEmbedding = self.module_registry["pos_emb"]
+        PositionalEncoder = self.module_registry["pos_enc"]
 
         # initialize the positional embeddings:
-        self.pos_enc = FourierEncoder1D(
+        self.pos_enc = PositionalEncoder(
             emb_dim=d_model,
         )
         

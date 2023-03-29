@@ -7,7 +7,7 @@ class ArgumentParserModule:
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument('--config', type=str, default='configs/default.yaml',
                                  help='Path to configuration file (default: config.yaml)')
-        self.parser.add_argument('--gpu', nargs='+', type=int, default=None,
+        self.parser.add_argument('--gpu', nargs='+', type=int, default=0,
                                  help='ID(s) of the GPU(s) to use (default: CPU)')
 
     def parse_args(self):
