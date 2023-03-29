@@ -9,7 +9,6 @@ import torch.nn.functional as F
 from torchvision.transforms import Resize
 
 from data.openpsg import PanopticSceneGraphDataset
-from mmdet.datasets.dataset_wrappers import ClassBalancedDataset
 
 from .misc import *
 from timm.models.registry import register_model
@@ -157,8 +156,8 @@ class PSGRelationDataset(BasePSGDataset):
         self.img_size = img_size
         self.resize = Resize(size=(img_size, img_size))
         self.one_hot = one_hot
-        self.obj_cls = len(self.dataset.dataset.CLASSES)
-        self.pd_cls = len(self.dataset.dataset.PREDICATES)
+        self.obj_cls = len(self.dataset.CLASSES)
+        self.pd_cls = len(self.dataset.PREDICATES)
 
     def __getitem__(self, idx):
         data = self.dataset.__getitem__(idx)
