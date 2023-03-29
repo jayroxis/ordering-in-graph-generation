@@ -67,7 +67,7 @@ model:
     vis_enc_cfg:
       lr: 2e-4
       weight_decay: 1e-4
-      dropout: 0.0
+      dropout: 0.1
     seq_gen_cfg:
       dropout: 0.0
     stop_detector_cfg:
