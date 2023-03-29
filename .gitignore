@@ -8,7 +8,7 @@ archived/
 imgs/
 
 # Slurm output file
-slurm-*.out
+*.out
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
