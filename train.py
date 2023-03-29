@@ -46,11 +46,12 @@ def main():
     tb_logger = TensorBoardLogger(save_dir=save_dir)
 
     # Create PyTorch Lightning Trainer
+    refresh_rate = train_config["params"].get("progressbar_refresh_rate", 100)
     trainer = pl.Trainer(
         devices=args.gpu,
         logger=tb_logger,
         plugins=[LightningEnvironment()],
-        callbacks=[TQDMProgressBar(refresh_rate=100)],
+        callbacks=[TQDMProgressBar(refresh_rate=refresh_rate)],
         **train_config["params"]
     )
 
