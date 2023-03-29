@@ -106,10 +106,11 @@ class PadSequenceBinary:
             batch_first=True,
             padding_value=0  # Initialize with all zeros
         )
-        padded_mask = (seq_padded == 0).all(-1)
         if seq_padded.ndim == 3:
-            for i in self.one_indices:
-                seq_padded[padded_mask][i] = 1  # Set indices to one
+            padded_mask = (seq_padded == 0).all(-1).unsqueeze(-1)
+            pad_value = torch.zeros(1, 1, seq_padded.shape[-1], device=seq_padded.device)
+            pad_value[..., self.one_indices] = 1
+            seq_padded = padded_mask * pad_value + seq_padded
         return seq_padded
 
     def __call__(self, batch):
