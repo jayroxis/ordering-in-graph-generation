@@ -2,7 +2,7 @@
 import os
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import TQDMProgressBar
+from pytorch_lightning.callbacks import TQDMProgressBar, ModelCheckpoint
 
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -45,13 +45,27 @@ def main():
         os.makedirs(save_dir)
     tb_logger = TensorBoardLogger(save_dir=save_dir)
 
-    # Create PyTorch Lightning Trainer
+    # Set up the checkpoint callback
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=save_dir, 
+        save_last=True,
+    )
+
+    # Set up progress bar callbacks
     refresh_rate = train_config["params"].get("progressbar_refresh_rate", 100)
+    progressbar_callbacks = TQDMProgressBar(
+        refresh_rate=refresh_rate
+    )
+
+    # Create PyTorch Lightning Trainer
     trainer = pl.Trainer(
         devices=args.gpu,
         logger=tb_logger,
         plugins=[LightningEnvironment()],
-        callbacks=[TQDMProgressBar(refresh_rate=refresh_rate)],
+        callbacks=[
+            progressbar_callbacks, 
+            checkpoint_callback
+        ],
         **train_config["params"]
     )
 
@@ -61,7 +75,6 @@ def main():
         train_dataloaders=data.train_loader, 
         val_dataloaders=data.val_loader
     )
-
 
 
 if __name__ == "__main__":
