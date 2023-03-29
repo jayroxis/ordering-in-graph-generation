@@ -93,14 +93,14 @@ training:
     class: torch.optim.lr_scheduler.OneCycleLR
     params:
       max_lr: 2e-4
-      total_steps: 1000            # should be the same as training epochs
-      pct_start: 0.01
+      total_steps: 200            # should be the same as training epochs
+      pct_start: 0.05
       div_factor: 25.0
       final_div_factor: 10000.0
       anneal_strategy: 'cos'
 
   params:                    # arguments for PyTorch Lightning Trainer
-    max_epochs: 1000         # should be the same as training epochs
+    max_epochs: 200         # should be the same as training epochs
     accelerator: gpu
     precision: 32
     strategy: ddp_find_unused_parameters_false
