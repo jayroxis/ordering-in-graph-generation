@@ -10,19 +10,19 @@ data:
   train_set:
     class: MolecularDatasetsOccur2SMILES
     params:
-      atom_file: /archived/moses/train/node_feat.npy
-      smiles_file: /archived/moses/train/label.npy
-      occur_cls: 25
-      smile_cls: 27
+      atom_file: archived/moses/train/node_feat.npy
+      smiles_file: archived/moses/train/label.npy
+      occur_cls: 25      
+      smile_cls: 27      # include stop_token 
       one_hot: True
 
-  train_set:
+  val_set:
     class: MolecularDatasetsOccur2SMILES
     params:
-      atom_file: /archived/moses/val/node_feat.npy
-      smiles_file: /archived/moses/val/label.npy
+      atom_file: archived/moses/val/node_feat.npy
+      smiles_file: archived/moses/val/label.npy
       occur_cls: 25
-      smile_cls: 27
+      smile_cls: 27      # include stop_token 
       one_hot: True
 
   train_loader:
@@ -36,7 +36,7 @@ data:
       collate_fn:
         class: PadSequenceBinary
         params:
-          one_indices: 26     # dimensions for stop token
+          one_indices: 0     # dimensions for stop token
 
   val_loader:
     class: torch.utils.data.DataLoader
@@ -48,26 +48,26 @@ data:
       collate_fn:
         class: PadSequenceBinary
         params:
-          one_indices: 26     # dimensions for stop token
+          one_indices: 0     # dimensions for stop token
 
 # ====================== Model Configs =========================
 
 model:
   name: ConditionalGraphGPT
-  class: vision_gpt
+  class: seq_gpt
   params:
-    input_dim: 3
-    output_dim: 325
+    input_dim: 25
+    output_dim: 27
     emb_dim: 1024
     gpt_name: gpt_large
-    prompt_enc_name: resnet50
+    prompt_enc_name: TransformerEncoder
     prompt_enc_cfg:
       dropout: 0.1
     seq_gen_cfg:
       dropout: 0.1
     stop_detector_cfg:
       model_name: StopTokenDetectorCategorical
-      stop_idx: 26
+      stop_idx: 0
       threshold: 0.5
 
   ema_model:

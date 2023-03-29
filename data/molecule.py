@@ -1,16 +1,18 @@
 
-import os 
+
+import torch
+import numpy as np 
 from torch.utils.data import Dataset
 from torch.nn import functional as F
 
 
-# Dictionary to encode SMILES
+# Dictionary to encode SMILES: '_' represents [STOP_TOKEN]
 smiles_dict = {
-    '#': 0,  '(': 1,  ')': 2,  '-': 3,  '1': 4,   '2': 5,  
-    '3': 6,  '4': 7,  '5': 8,  '6': 9,  '=': 10,  'B': 11,  
-    'C': 12, 'F': 13, 'H': 14, 'N': 15, 'O': 16,  'S': 17,  
-    '[': 18, ']': 19, 'c': 20, 'l': 21, 'n': 22,  'o': 23,  
-    'r': 24, 's': 25, '_': 26  # '_' represents [STOP_TOKEN]
+    '_': 0,  '#': 1,  '(': 2,  ')': 3,  '-': 4,  '1': 5,   
+    '2': 6,  '3': 7,  '4': 8,  '5': 9,  '6': 10, '=': 11,  
+    'B': 12, 'C': 13, 'F': 14, 'H': 15, 'N': 16, 'O': 17,  
+    'S': 18, '[': 19, ']': 20, 'c': 21, 'l': 22, 'n': 23,  
+    'o': 24, 'r': 25, 's': 26   
 }
 
 
