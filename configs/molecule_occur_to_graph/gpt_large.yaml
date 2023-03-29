@@ -103,7 +103,8 @@ training:
     check_val_every_n_epoch: 1
     log_every_n_steps: 200
     gradient_clip_val: 0.5
-  
+    progressbar_refresh_rate: 1000
+
   # ------------------- Training Metrics -----------------------
   train_metrics:
     ce_loss:     
