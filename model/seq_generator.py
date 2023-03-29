@@ -44,8 +44,8 @@ class Sequence2Sequence(nn.Module):
         """
         super().__init__()
 
-        # Visual Encoder
-        self.prompt_seq_enc = build_model(**vis_enc)
+        # Prompt Encoder
+        self.prompt_seq_enc = build_model(**prompt_seq_enc)
         
         # Sequence Encoder
         self.seq_enc = build_model(**seq_enc)
@@ -67,7 +67,7 @@ class Sequence2Sequence(nn.Module):
         Forward pass through the model.
 
         Args:
-        - img: the input image tensor
+        - prompt: the input prompt sequence
         - seq: the input sequence tensor 
                (None for first token prediction)
 
@@ -77,7 +77,7 @@ class Sequence2Sequence(nn.Module):
         assert seq.ndim == 3, f"Input sequence expect 3D tensor but got {seq.ndim}-D."
 
         # encode prompt sequence
-        prompt_emb = self.prompt_seq_enc(img)
+        prompt_emb = self.prompt_seq_enc(prompt)
 
         # encode sequence and concatenate with prompt embeddings
         if seq is not None:
@@ -152,14 +152,14 @@ class Sequence2Sequence(nn.Module):
     
     def generate(
         self, 
-        img, 
+        prompt, 
         seq_len=100, 
     ):
         """
         Perform iterative forward pass through the model.
 
         Args:
-        - img: the input image tensor
+        - prompt: the input prompt sequence
         - seq_len: the desired sequence length
         - stop_token_value: the value of the stop token
         - stop_threshold: the maximum absolute difference to consider a token as a stop token
@@ -167,12 +167,12 @@ class Sequence2Sequence(nn.Module):
         Returns:
         - generated sequence
         """
-        # encode visual features
-        visual_emb = self.vis_enc(img)
+        # encode prompt sequence
+        prompt_emb = self.prompt_seq_enc(prompt)
         self.seq_gen._init_buffer_()
         
         # initial forward
-        token = visual_emb
+        token = prompt_emb
         output_seq = self.seq_gen.predict_next(token)
         
         # iterative forward

@@ -21,7 +21,11 @@ _default_cfg = {
     "layernorm": {
         "class": "nn.LayerNorm",
     },
+    "pos_emb": {
+        "class": "FourierEmbedding",
+    },
 }
+
 
 
 @register_model
@@ -210,3 +214,93 @@ class MLPEncoder(nn.Module):
         output = self.mlp(x)
 
         return output
+
+
+
+class TransformerEncoder(nn.Module):
+    def __init__(
+        self, 
+        input_dim: int,
+        output_dim: int, 
+        d_model: int = 512,
+        num_heads: int = 8, 
+        dropout: float = 0.0,
+        transformer_depth = 1,
+        module_config: dict = {}, 
+        **kwargs,
+    ):
+        super(VisualEncoder, self).__init__()
+
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.d_model = d_model
+
+        # init module registry
+        self.module_registry = build_module_registry(
+            config=module_config,
+            default_cfg=_default_cfg,
+        )
+        FeedForwardLayer = self.module_registry["ff_layer"]
+        Activation = self.module_registry["activation"]
+        PositionalEmbedding = self.module_registry["pos_emb"]
+
+        # initialize the positional embeddings:
+        self.pos_enc = FourierEncoder1D(
+            emb_dim=d_model,
+        )
+        
+        # output layer
+        self.in_proj = FeedForwardLayer(input_dim, d_model)
+        self.fc = FeedForwardLayer(d_model, output_dim)
+        self.transformer_encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=output_dim,
+                dim_feedforward=output_dim*2,
+                nhead=num_heads,
+                dropout=dropout,
+                activation=Activation(),
+                batch_first=True,
+                norm_first=True
+            ),
+            num_layers=transformer_depth,
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Main forward function.
+
+        """
+        features = self.in_proj(x)
+        tokens = features + self.pos_enc(features)
+        tokens = self.transformer_encoder(tokens)
+        tokens = self.fc(tokens)
+        return tokens
+    
+    @torch.jit.ignore
+    def get_params_group(self, lr=1e-3, weight_decay=1e-4, **kwargs):
+        """
+        Get the optimizer parameters for training the model.
+
+        Args:
+            lr (float): Learning rate for the optimizer. Defaults to 1e-3.
+                        weight_decay (float): Weight decay for the optimizer. Defaults to 1e-4.
+
+        Returns:
+            list: A list of dictionaries, where each dictionary specifies the parameters 
+                  and optimizer settings for a different parameter group.
+        """
+        # define the parameter groups for the optimizer
+        if hasattr(self, "lr"):
+            lr = float(self.lr)
+        if hasattr(self, "weight_decay"):
+            weight_decay = float(self.weight_decay)
+
+        params = [
+            {
+                "params": self.parameters(), 
+                "lr": lr, 
+                "weight_decay": weight_decay, 
+                **kwargs
+            },
+        ]
+        return params

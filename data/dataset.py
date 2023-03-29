@@ -2,6 +2,7 @@
 # Planar graph datasets
 from .planar_graph import RenderedPlanarGraphDataset
 from .scene_graph import PSGRelationDataset
+from .Molecule import MolecularDatasetsOccur2SMILES
 
 
 __all__ = [
