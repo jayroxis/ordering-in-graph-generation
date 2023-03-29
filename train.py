@@ -2,7 +2,7 @@
 import os
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import RichProgressBar
+from pytorch_lightning.callbacks import TQDMProgressBar
 
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -50,7 +50,7 @@ def main():
         devices=args.gpu,
         logger=tb_logger,
         plugins=[LightningEnvironment()],
-        callbacks=[RichProgressBar(refresh_rate=100)],
+        callbacks=[TQDMProgressBar(refresh_rate=100)],
         **train_config["params"]
     )
 
