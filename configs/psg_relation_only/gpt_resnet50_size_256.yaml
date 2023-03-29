@@ -61,8 +61,6 @@ model:
     in_chans: 3
     output_dim: 325
     emb_dim: 1024
-    seq_dtype: float
-    stop_token: 1.0
     gpt_name: gpt_large
     conv_backbone: resnet50
     pretrained: True

@@ -217,6 +217,7 @@ class MLPEncoder(nn.Module):
 
 
 
+@register_model
 class TransformerEncoder(nn.Module):
     def __init__(
         self, 
