@@ -8,9 +8,9 @@ from timm.models.registry import register_model
 
 @register_model
 def vision_gpt(
-    in_chans: int = 3,
+    in_chans: int,
+    output_dim: int,
     emb_dim: int = 1024,
-    output_dim: int = 4,
     gpt_name: str = "gpt_medium",
     conv_backbone: str = "resnet50",
     vit_backbone: str = None,
@@ -105,6 +105,90 @@ def vision_gpt(
     model = build_model(
         model_name="conditional_sequence_generator",
         modality="image",
+        model_config=model_config,
+    )
+    return model
+
+
+
+
+@register_model
+def seq_gpt(
+    input_dim: int,
+    output_dim: int,
+    emb_dim: int = 1024,
+    prompt_enc_name: str = "TransformerEncoder",
+    gpt_name: str = "gpt_medium",
+    seq_enc: str = "MLPEncoder",
+    prompt_enc_cfg: dict = {},
+    seq_gen_cfg: dict = {},
+    seq_enc_cfg: dict = {},
+    stop_detector_cfg: dict = {},
+    **kwargs,
+) -> nn.Module:
+    """
+    Constructs a GPT-based framework for conditional sequence generation tasks
+    and graph generation.
+
+    Args:
+        input_dim   (int):          Number of input dimensions in prompts.
+        emb_dim     (int):          Dimension of the embedding used to represent prompt 
+                                        sequences and generate sequences.
+        output_dim  (int):          Dimension of the output sequences.
+        stop_token  (float or int): Value used to indicate the end of a generated sequence.
+        gpt_name    (str):          Setting of the GPT model to use.
+        prompt_enc_name (str):      Name for the prompt encoder model.
+        prompt_enc_cfg (dict):      Additional configuration options for the prompt encoder model.
+        seq_gen_cfg (dict):         Additional configuration options for the sequence generator model.
+        seq_enc_cfg (dict):         Additional configuration options for the sequence encoder model.
+        stop_detector_cfg (dict):   Additional configuration options for the stop token detector model.
+        **kwargs:                   Additional arguments to be passed to the `build_model` function.
+
+    Returns:
+        A `torch.nn.Module` object representing the GPT-based framework.
+    """
+    # Prompt Encoder
+    prompt_enc = dict(
+        model_name=prompt_enc_name,
+        input_dim=input_dim,
+        output_dim=emb_dim, 
+        d_model=emb_dim,
+        **prompt_enc_cfg
+    )
+
+    # Sequence Encoder
+    seq_enc = dict(
+        model_name=seq_enc,
+        input_dim=output_dim, 
+        output_dim=emb_dim, 
+        hidden_dim=emb_dim, 
+        num_layers=2,
+        **seq_enc_cfg
+    )
+
+    # Sequence Generator
+    seq_gen = dict(
+        model_name=gpt_name,
+        input_dim=emb_dim,
+        output_dim=output_dim,
+        **seq_gen_cfg
+    )
+
+    # Stop Token Encoder
+    stop_detector = dict(
+        **stop_detector_cfg
+    )
+    
+    # build final model from all configs
+    model_config = dict(
+        prompt_seq_enc=prompt_enc,
+        seq_gen=seq_gen,
+        stop_detector=stop_detector,
+        seq_enc=seq_enc,
+    )
+    model = build_model(
+        model_name="conditional_sequence_generator",
+        modality="sequence",
         model_config=model_config,
     )
     return model
