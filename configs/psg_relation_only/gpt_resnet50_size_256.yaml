@@ -67,9 +67,9 @@ model:
     vis_enc_cfg:
       lr: 2e-4
       weight_decay: 1e-4
-      dropout: 0.1
+      dropout: 0.0
     seq_gen_cfg:
-      dropout: 0.1
+      dropout: 0.0
     stop_detector_cfg:
       model_name: StopTokenDetectorCategorical
       stop_idx: 134, 267, 324 
@@ -107,6 +107,7 @@ training:
     enable_checkpointing: True
     check_val_every_n_epoch: 1
     log_every_n_steps: 50
+    gradient_clip_val: 0.5
   
   # ------------------- Training Metrics -----------------------
   train_metrics:
