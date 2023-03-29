@@ -2,11 +2,12 @@
 # Planar graph datasets
 from .planar_graph import RenderedPlanarGraphDataset
 from .scene_graph import PSGRelationDataset
-from .Molecule import MolecularDatasetsOccur2SMILES
+from .molecule import MolecularDatasetsOccur2SMILES
 
 
 __all__ = [
-    "RenderedPlanarGraphDataset", "PSGRelationDataset"
+    "RenderedPlanarGraphDataset", "PSGRelationDataset",
+    "MolecularDatasetsOccur2SMILES"
 ]
 
 
