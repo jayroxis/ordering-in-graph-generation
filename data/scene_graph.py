@@ -124,16 +124,12 @@ class BasePSGDataset(torch.utils.data.Dataset):
         else:
             pipeline = self.train_pipeline
 
-        dataset = PanopticSceneGraphDataset(
+        self.dataset = PanopticSceneGraphDataset(
             ann_file=ann_file, 
             pipeline=pipeline, 
             data_root=data_root,
             test_mode=test_mode,
             split=split,
-        )
-        self.dataset = ClassBalancedDataset(
-            dataset=dataset,
-            oversample_thr=oversample_thr, 
         )
 
     def __len__(self):
