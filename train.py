@@ -50,7 +50,7 @@ def main():
 
     # Set up the checkpoint callback
     checkpoint_callback = ModelCheckpoint(
-        dirpath=save_dir, 
+        dirpath=tb_logger.log_dir, 
         save_last=True,
     )
 

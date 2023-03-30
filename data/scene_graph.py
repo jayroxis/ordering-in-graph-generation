@@ -21,7 +21,7 @@ class BasePSGDataset(torch.utils.data.Dataset):
         data_root: str,
         test_mode: bool = False,
         split: str = 'train',
-        sort_func: str = "no_sort",
+        sort_func: str = "no_sort",   # the original sorting was lexicographical
         oversample_thr: float = 0.05,
         **kwargs,
     ) -> None:
@@ -41,7 +41,11 @@ class BasePSGDataset(torch.utils.data.Dataset):
         )
 
         # sequence sorting
-        self.sort_func = eval(sort_func)
+        if type(sort_func) == str:
+            sort_func = eval(sort_func)
+        elif type(sort_func) == dict:
+            sort_func = eval(sort_func["class"])(**sort_func["params"])
+        self.sort_func = sort_func
 
         # Train Pipeline From PSGFormer-ResNet50
         # https://github.com/Jingkang50/OpenPSG/blob/main/configs/psgformer/psgformer_r50_psg.py    
