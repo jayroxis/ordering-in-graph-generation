@@ -24,7 +24,7 @@ from utils.helpers import safe_load_yaml
 
 def main():
     # set cudnn to False since we have data of different length
-    torch.backends.cudnn.benchmark=False
+    torch.backends.cudnn.benchmark = False
 
     # Parse Arguments
     arg_parser = ArgumentParserModule()
