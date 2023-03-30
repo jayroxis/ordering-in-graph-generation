@@ -6,6 +6,7 @@ To monitor jobs on ARC:
 ```cmd
 watch -n1 "squeue -u jayroxis --format=\"%.10i %.10P %.30j %.8u %.8T %.8M %.10l %12R\""
 ```
+All trainings now are in 32-bit for better training stability. Use AMP (Auto-Mixed Precision) might cause training instability, but it might be resolved using some training techniques.
 
 ## Datasets
 
