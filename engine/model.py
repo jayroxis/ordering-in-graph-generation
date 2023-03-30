@@ -5,6 +5,7 @@ import timm
 from timm.utils.model_ema import *
 
 import pytorch_lightning as pl
+from pytorch_lightning.utilities import rank_zero_only
 
 from model import *
 from model.misc import build_model
@@ -46,7 +47,7 @@ class VisionSequenceModel(pl.LightningModule):
         self.scheduler_config = self.training_config.get("scheduler", {})
 
         # save the configs to the output folder
-        self.save_hyperparameters()
+        self.save_hyperparameters(metrics={})
 
     def build_models(self):
         # Define generator models
@@ -54,6 +55,10 @@ class VisionSequenceModel(pl.LightningModule):
             model_name=self.model_config['class'],
             **self.model_config['params']
         )
+        self.build_ema_model()
+
+    @rank_zero_only
+    def build_ema_model(self):
         if "ema_model" in self.model_config:
             ema_config = self.model_config["ema_model"]
             print(f"[INFO] Using ema model {ema_config}.")
@@ -197,26 +202,36 @@ class VisionSequenceModel(pl.LightningModule):
             metrics=self.train_metrics
         )
         return losses
-            
-    def training_step_end(self, step_output):
+    
+    @rank_zero_only
+    def update_ema(self):
         # update ema model if exists
         if hasattr(self, "ema_model"):
             self.ema_model.update(self.model)
 
+    @rank_zero_only
+    def log_train_step_stats(self, step_output):
         # log learning rate
         lr_schedulers = self.lr_schedulers()
         if isinstance(lr_schedulers, list) or isinstance(lr_schedulers, tuple):
             last_lr = lr_schedulers[0].get_last_lr()[0]
         else:
             last_lr = lr_schedulers.get_last_lr()[0]
-        self.log('lr', last_lr, prog_bar=True)
 
         # log training statistics
+        self.log('lr', last_lr, prog_bar=True)
         prefix = "train/"
         self.log_dict(
             {prefix + k: v for k, v in step_output.items()}, 
             prog_bar=False
         )
+
+    def training_step_end(self, step_output):
+        # Update ema model only for the rank 0 process
+        self.update_ema()
+        
+        # Log training statistics
+        self.log_train_step_stats(step_output)
         return super().training_step_end(step_output)
 
     def validation_step(self, batch, batch_idx):
@@ -255,6 +270,7 @@ class VisionSequenceModel(pl.LightningModule):
         else:
             lr_schedulers.step()
 
+    @rank_zero_only
     def log_image(self, name, tensor, step=None):
         # assume tensor is a torch.Tensor with shape (height, width)
         # convert to 3 channels (assuming input tensor is grayscale)

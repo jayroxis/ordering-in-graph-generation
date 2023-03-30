@@ -1,9 +1,11 @@
 
 import os
+
+# PyTorch Lightning 
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import TQDMProgressBar, ModelCheckpoint
-
+from pytorch_lightning.utilities import rank_zero_only
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # This line is very IMPORTANT for expected Cluster behavior
@@ -44,34 +46,34 @@ def main():
         train_config.get("save_dir", "./"),
         os.path.basename(args.config).split(".")[0]
     )
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    tb_logger = TensorBoardLogger(save_dir=save_dir)
-
     # Set up the checkpoint callback
-    checkpoint_callback = ModelCheckpoint(
-        dirpath=save_dir, 
-        save_last=True,
-    )
+    if "$" in save_dir:  # not the main process
+        callbacks = []
+    else:
+        callbacks = [ModelCheckpoint(
+            dirpath=save_dir, 
+            save_last=True,
+        )]
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+
+    tb_logger = TensorBoardLogger(save_dir=save_dir)
 
     # Set up progress bar callbacks
     if "progressbar_refresh_rate" in train_config["params"]:
         refresh_rate = train_config["params"].pop("progressbar_refresh_rate")
     else:
         refresh_rate = 100
-    progressbar_callbacks = TQDMProgressBar(
+    callbacks.append(TQDMProgressBar(
         refresh_rate=refresh_rate
-    )
+    ))
 
     # Create PyTorch Lightning Trainer
     trainer = pl.Trainer(
         devices=args.gpu,
         logger=tb_logger,
         plugins=[LightningEnvironment()],
-        callbacks=[
-            progressbar_callbacks, 
-            checkpoint_callback
-        ],
+        callbacks=callbacks,
         **train_config["params"]
     )
 
