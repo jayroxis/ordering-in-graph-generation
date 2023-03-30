@@ -99,4 +99,4 @@ The Binary-CE loss, as shown in [ResNet Strikes Back [1]](https://arxiv.org/abs/
 ```
 ### Other Possible Improvements:
 
-BlurPool, EMA, FixRes, Label Smoothing, and Progressive Image Resizing; it also uses the FFCV dataloader and Channels Last memory format.
+BlurPool, EMA, FixRes, [Label Smoothing](https://arxiv.org/abs/1512.00567): https://arxiv.org/pdf/1906.02629.pdf, and Progressive Image Resizing; it also uses the FFCV dataloader and Channels Last memory format.

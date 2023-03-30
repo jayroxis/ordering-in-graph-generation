@@ -40,7 +40,10 @@ def main():
     data = eval(data_config["class"])(config=data_config)
 
     # Set up logger
-    save_dir = train_config.get("save_dir", "./")
+    save_dir = os.path.join(
+        train_config.get("save_dir", "./"),
+        os.path.basename(args.config).split(".")[0]
+    )
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     tb_logger = TensorBoardLogger(save_dir=save_dir)
@@ -52,7 +55,10 @@ def main():
     )
 
     # Set up progress bar callbacks
-    refresh_rate = train_config["params"].get("progressbar_refresh_rate", 100)
+    if "progressbar_refresh_rate" in train_config["params"]:
+        refresh_rate = train_config["params"].pop("progressbar_refresh_rate")
+    else:
+        refresh_rate = 100
     progressbar_callbacks = TQDMProgressBar(
         refresh_rate=refresh_rate
     )
@@ -78,5 +84,4 @@ def main():
 
 
 if __name__ == "__main__":
-
     main()

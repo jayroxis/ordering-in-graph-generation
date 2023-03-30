@@ -53,7 +53,7 @@ data:
 
 # ==================== Training Configs =========================
 training:
-  save_dir: ./runs/
+  save_dir: ./runs/planar
   optimizer:
     class: torch.optim.AdamW
     params:
