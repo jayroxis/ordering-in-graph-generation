@@ -22,11 +22,12 @@ class MolecularDatasetsOccur2SMILES(Dataset):
     """
     def __init__(
         self, 
-        atom_file: str, 
+        atom_file:  str, 
         smiles_file: str, 
         occur_cls: int = 25,
         smile_cls: int = 27,
         one_hot: bool = True,
+        **kwargs,
     ):
         super().__init__()
         atoms = np.load(atom_file, allow_pickle=True)

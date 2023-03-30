@@ -10,8 +10,7 @@ data:
   train_set:
     class: MolecularDatasetsOccur2SMILES
     params:
-      sort_func: no_sort
-      atom_file: archived/moses/train/node_feat.npy
+      atom_file:  archived/moses/train/node_feat.npy
       smiles_file: archived/moses/train/label.npy
       occur_cls: 25      
       smile_cls: 27      # include stop_token 
@@ -20,8 +19,7 @@ data:
   val_set:
     class: MolecularDatasetsOccur2SMILES
     params:
-      sort_func: no_sort
-      atom_file: archived/moses/val/node_feat.npy
+      atom_file:  archived/moses/val/node_feat.npy
       smiles_file: archived/moses/val/label.npy
       occur_cls: 25
       smile_cls: 27      # include stop_token 
