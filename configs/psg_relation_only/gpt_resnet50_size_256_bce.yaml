@@ -82,7 +82,7 @@ model:
 
 # ==================== Training Configs =========================
 training:
-  save_dir: ./runs/
+  save_dir: ./runs/psg/
   optimizer:
     class: torch.optim.AdamW
     params:

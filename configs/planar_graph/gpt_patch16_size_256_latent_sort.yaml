@@ -10,7 +10,10 @@ data:
   train_set:
     class: RenderedPlanarGraphDataset
     params:
-      sort_func: mean_square_sort
+      sort_func:
+        class: latent_sort
+        params:
+          encoder_path: asset/mlp_latent_sortedr.jit.pth
       num_samples: 40000
       img_size: 256
       num_points: 15
@@ -32,7 +35,10 @@ data:
   val_set:
     class: RenderedPlanarGraphDataset
     params:
-      sort_func: mean_square_sort
+      sort_func:
+        class: latent_sort
+        params:
+          encoder_path: asset/mlp_latent_sortedr.jit.pth
       num_samples: 500
       img_size: 256
       num_points: 15

@@ -10,7 +10,7 @@ data:
   train_set:
     class: MolecularDatasetsOccur2SMILES
     params:
-      atom_file: archived/moses/train/node_feat.npy
+      atom_file:  archived/moses/train/node_feat.npy
       smiles_file: archived/moses/train/label.npy
       occur_cls: 25      
       smile_cls: 27      # include stop_token 
@@ -19,7 +19,7 @@ data:
   val_set:
     class: MolecularDatasetsOccur2SMILES
     params:
-      atom_file: archived/moses/val/node_feat.npy
+      atom_file:  archived/moses/val/node_feat.npy
       smiles_file: archived/moses/val/label.npy
       occur_cls: 25
       smile_cls: 27      # include stop_token 
@@ -77,7 +77,7 @@ model:
 
 # ==================== Training Configs =========================
 training:
-  save_dir: ./runs/
+  save_dir: ./runs/molecule
   optimizer:
     class: torch.optim.AdamW
     params:

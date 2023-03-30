@@ -6,6 +6,7 @@ To monitor jobs on ARC:
 ```cmd
 watch -n1 "squeue -u jayroxis --format=\"%.10i %.10P %.30j %.8u %.8T %.8M %.10l %12R\""
 ```
+All trainings now are in 32-bit for better training stability. Use AMP (Auto-Mixed Precision) might cause training instability, but it might be resolved using some training techniques.
 
 ## Datasets
 
@@ -99,4 +100,4 @@ The Binary-CE loss, as shown in [ResNet Strikes Back [1]](https://arxiv.org/abs/
 ```
 ### Other Possible Improvements:
 
-BlurPool, EMA, FixRes, Label Smoothing, and Progressive Image Resizing; it also uses the FFCV dataloader and Channels Last memory format.
+BlurPool, EMA, FixRes, [Label Smoothing](https://arxiv.org/abs/1512.00567): https://arxiv.org/pdf/1906.02629.pdf, and Progressive Image Resizing; it also uses the FFCV dataloader and Channels Last memory format.
