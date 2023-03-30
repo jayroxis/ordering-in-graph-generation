@@ -57,7 +57,7 @@ class VisionSequenceModel(pl.LightningModule):
         )
         self.build_ema_model()
 
-    @rank_zero_only
+
     def build_ema_model(self):
         if "ema_model" in self.model_config:
             ema_config = self.model_config["ema_model"]
@@ -203,13 +203,13 @@ class VisionSequenceModel(pl.LightningModule):
         )
         return losses
     
-    @rank_zero_only
+    # @rank_zero_only
     def update_ema(self):
         # update ema model if exists
         if hasattr(self, "ema_model"):
             self.ema_model.update(self.model)
 
-    @rank_zero_only
+    # @rank_zero_only
     def log_train_step_stats(self, step_output):
         # log learning rate
         lr_schedulers = self.lr_schedulers()
@@ -270,7 +270,7 @@ class VisionSequenceModel(pl.LightningModule):
         else:
             lr_schedulers.step()
 
-    @rank_zero_only
+    # @rank_zero_only
     def log_image(self, name, tensor, step=None):
         # assume tensor is a torch.Tensor with shape (height, width)
         # convert to 3 channels (assuming input tensor is grayscale)
