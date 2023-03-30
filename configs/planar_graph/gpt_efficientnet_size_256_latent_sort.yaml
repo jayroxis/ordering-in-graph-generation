@@ -1,0 +1,123 @@
+
+# ====================== Data Configs =========================
+
+class: VisionSequenceModel
+
+data:
+  name: PlanarGraphDataset
+  class: StandardDataModule
+
+  train_set:
+    class: RenderedPlanarGraphDataset
+    params:
+      sort_func:
+        class: latent_sort
+        params:
+          encoder_path: asset/mlp_latent_sortedr.jit.pth
+      num_samples: 40000
+      img_size: 256
+      num_points: 15
+      epsilon: 0.1
+      tiny_angle: 30
+
+  train_loader:
+    class: torch.utils.data.DataLoader
+    params:
+      batch_size: 40     # effective batch size = batch_size * num_gpu
+      num_workers: 8
+      pin_memory: False
+      shuffle: True
+      collate_fn:
+        class: PadSequenceConstant
+        params:
+          pad_value: -1.0
+
+  val_set:
+    class: RenderedPlanarGraphDataset
+    params:
+      sort_func:
+        class: latent_sort
+        params:
+          encoder_path: asset/mlp_latent_sortedr.jit.pth
+      num_samples: 500
+      img_size: 256
+      num_points: 15
+      epsilon: 0.1
+      tiny_angle: 30
+
+  val_loader:
+    class: torch.utils.data.DataLoader
+    params:
+      batch_size: 100     # effective batch size = batch_size * num_gpu
+      num_workers: 8
+      pin_memory: False
+      shuffle: False
+      collate_fn:
+        class: PadSequenceConstant
+        params:
+          pad_value: -1.0
+
+# ==================== Training Configs =========================
+training:
+  save_dir: ./runs/planar
+  optimizer:
+    class: torch.optim.AdamW
+    params:
+      lr: 0.0002
+      weight_decay: 0.0
+
+  scheduler:
+    class: torch.optim.lr_scheduler.OneCycleLR
+    params:
+      max_lr: 0.0002
+      total_steps: 1000            # should be the same as training epochs
+      pct_start: 0.01
+      div_factor: 25.0
+      final_div_factor: 10000.0
+      anneal_strategy: 'cos'
+
+  params:                   # arguments for PyTorch Lightning Trainer
+    max_epochs: 1000         # should be the same as training epochs
+    accelerator: gpu
+    precision: 32
+    strategy: ddp_find_unused_parameters_false
+    enable_checkpointing: True
+    check_val_every_n_epoch: 1
+    log_every_n_steps: 50
+  
+  train_metrics:
+    l1_loss: 
+      class: nn.L1Loss
+      weight: 1
+    mse_loss:
+      class: nn.MSELoss
+      weight: 1
+
+  eval_metrics:
+    l1_loss: 
+      class: nn.L1Loss
+    mse_loss:
+      class: nn.MSELoss
+
+# ====================== Model Configs =========================
+
+model:
+  name: VisualGraphGPT
+  class: vision_gpt
+  params:
+    in_chans: 3
+    output_dim: 4
+    emb_dim: 512
+    img_size: 256
+    gpt_name: gpt_medium
+    conv_backbone: efficientnet_b0
+    pretrained: False
+    stop_detector_cfg:
+      model_name: StopTokenDetectorFloat
+      stop_value: -1.0
+      threshold: 0.8
+
+  ema_model:
+    class: ModelEmaV2
+    params: 
+      decay: 0.995
