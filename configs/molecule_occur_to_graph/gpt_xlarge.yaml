@@ -81,13 +81,13 @@ training:
   optimizer:
     class: torch.optim.AdamW
     params:
-      lr: 2e-4
+      lr: 2e-5
       weight_decay: 1e-4
 
   scheduler:
     class: torch.optim.lr_scheduler.OneCycleLR
     params:
-      max_lr: 2e-4
+      max_lr: 2e-5
       total_steps: 400            # should be the same as training epochs
       pct_start: 0.01
       div_factor: 25.0

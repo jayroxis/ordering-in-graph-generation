@@ -224,7 +224,7 @@ class latent_sort:
         using a Neural Network encoder.
         """
         latent = self.encoder(seq)
-        idx = torch.argsort(latent.squeeze())
+        idx = torch.argsort(latent.flatten())
         sorted_seq = seq[idx]
         return sorted_seq
 
