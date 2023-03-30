@@ -47,15 +47,12 @@ def main():
         os.path.basename(args.config).split(".")[0]
     )
     # Set up the checkpoint callback
-    if "$" in save_dir:  # not the main process
-        callbacks = []
-    else:
-        callbacks = [ModelCheckpoint(
-            dirpath=save_dir, 
-            save_last=True,
-        )]
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+    callbacks = [ModelCheckpoint(
+        dirpath=save_dir, 
+        save_last=True,
+    )]
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
     tb_logger = TensorBoardLogger(save_dir=save_dir)
 
