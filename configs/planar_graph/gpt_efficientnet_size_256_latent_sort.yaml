@@ -38,7 +38,7 @@ data:
       sort_func:
         class: latent_sort
         params:
-          encoder_path: asset/mlp_latent_sortedr.jit.pth
+          encoder_path: asset/mlp_latent_sorter.jit.pth
       num_samples: 500
       img_size: 256
       num_points: 15
