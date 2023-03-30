@@ -47,7 +47,7 @@ class VisionSequenceModel(pl.LightningModule):
         self.scheduler_config = self.training_config.get("scheduler", {})
 
         # save the configs to the output folder
-        self.save_hyperparameters(metrics={})
+        self.save_hyperparameters()
 
     def build_models(self):
         # Define generator models
