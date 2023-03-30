@@ -57,7 +57,7 @@ class VisionSequenceModel(pl.LightningModule):
         )
         self.build_ema_model()
 
-
+    # @rank_zero_only
     def build_ema_model(self):
         if "ema_model" in self.model_config:
             ema_config = self.model_config["ema_model"]
