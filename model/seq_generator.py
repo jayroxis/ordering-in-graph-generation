@@ -254,7 +254,8 @@ class Visual2Sequence(nn.Module):
         - generated sequence
         """
         assert img.ndim == 4, f"Input image expect 4D tensor but got {img.ndim}-D."
-        assert seq.ndim == 3, f"Input sequence expect 3D tensor but got {seq.ndim}-D."
+        if seq is not None:
+            assert seq.ndim == 3, f"Input sequence expect 3D tensor but got {seq.ndim}-D."
 
         # encode visual features
         visual_emb = self.vis_enc(img)
