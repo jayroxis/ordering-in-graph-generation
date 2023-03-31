@@ -135,6 +135,7 @@ class BasePSGDataset(torch.utils.data.Dataset):
             data_root=data_root,
             test_mode=test_mode,
             split=split,
+            all_bboxes=True
         )
 
     def __len__(self):
@@ -183,9 +184,9 @@ class PSGRelationDataset(BasePSGDataset):
         rels = self.sort_func(rels)
 
         # map the segment id to semantic id
-        ann_info = self.dataset.get_ann_info(idx)
+        labels = data["gt_labels"]
         seg_id_to_obj_id = {
-            i: item['category'] for i, item in enumerate(ann_info['masks'])
+            i: l.item() for i, l in enumerate(labels[0].data)
         }
         for r in rels:
             r[0] = seg_id_to_obj_id[r[0].item()]
