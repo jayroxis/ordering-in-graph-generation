@@ -1,7 +1,9 @@
 
+# This is the Semantic Scene Graph dataset
 
-# Panoptic Scene Graph on COCO-2017 Dataset
-# PSG Challenge: https://github.com/Jingkang50/OpenPSG
+# Credits to:
+#   Panoptic Scene Graph on COCO-2017 Dataset
+#   PSG Challenge: https://github.com/Jingkang50/OpenPSG
 
 
 import torch
