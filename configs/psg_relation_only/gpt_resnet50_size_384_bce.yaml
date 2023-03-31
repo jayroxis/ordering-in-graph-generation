@@ -38,7 +38,7 @@ data:
       collate_fn:
         class: PadSequenceBinary
         params:
-          one_indices: 134, 267, 324     # dimensions for stop token
+          one_indices: 133, 267, 324     # dimensions for stop token
 
   val_loader:
     class: torch.utils.data.DataLoader
@@ -50,7 +50,7 @@ data:
       collate_fn:
         class: PadSequenceBinary
         params:
-          one_indices: 134, 267, 324     # dimensions for stop token
+          one_indices: 133, 267, 324     # dimensions for stop token
 
 # ====================== Model Configs =========================
 
@@ -72,7 +72,7 @@ model:
       dropout: 0.0
     stop_detector_cfg:
       model_name: StopTokenDetectorCategorical
-      stop_idx: 134, 267, 324 
+      stop_idx: 133, 267, 324 
       threshold: 0.2
 
   ema_model:
