@@ -181,7 +181,7 @@ class VisualEncoder(nn.Module):
             features = features.permute(0, 2, 3, 1)
             features = features.contiguous()
             features = features.view(features.size(0), -1, self.output_channels)
-        tokens = features + self.pos_embed(features)
+        tokens = features + self.pos_embed(features).to(x.device)
         tokens = self.fc(tokens)
         return tokens
     
@@ -336,7 +336,7 @@ class ConvNetEncoder(VisualEncoder):
             torch.Tensor: Encoded feature tensor with shape (batch_size, num_tokens, output_channels).
         """
         features = self.encoder.forward_features(x)
-        tokens = features + self.pos_embed(features)
+        tokens = features + self.pos_embed(features).to(x.device)
 
         tokens = tokens.permute(0, 2, 3, 1)
         tokens = tokens.contiguous()
