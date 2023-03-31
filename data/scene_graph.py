@@ -182,7 +182,7 @@ class PSGRelationDataset(BasePSGDataset):
         # map the segment id to semantic id
         labels = data["gt_labels"]
         if type(labels) == tuple or type(labels) == list:
-            labels = torch.cat(labels, dim=0)
+            labels = labels[0]
         seg_id_to_obj_id = {
             i: l.item() for i, l in enumerate(labels.data)
         }
