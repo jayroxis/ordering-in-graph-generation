@@ -176,6 +176,18 @@ class PSGRelationDataset(BasePSGDataset):
         rels = rels.data.long()
         rels = self.sort_func(rels)
 
+        # map the segment id to semantic id
+        ann_info = self.dataset.get_ann_info(idx)
+        seg_id_to_obj_id = {
+            i: item['category'] for i, item in enumerate(ann_info['masks'])
+        }
+        for r in rels:
+            r[0] = seg_id_to_obj_id[r[0].item()]
+            r[1] = seg_id_to_obj_id[r[1].item()]
+
+        # remove duplicates for semantic graphs
+        rels = torch.unique(rels, dim=0)
+    
         # one-hot encoding
         if self.one_hot:
             one_hot_rels = torch.cat([
