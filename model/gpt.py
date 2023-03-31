@@ -331,7 +331,7 @@ class DecoderLayer(nn.Module):
         - torch.Tensor: The output tensor of shape 
           (batch_size, sequence_length, d_model).
         """
-        return self.forward(x=x, mask=mask[-1:, :-1], target=x[:, -1:])
+        return self.forward(x=x, mask=mask, target=x[:, -1:])
 
 
     
