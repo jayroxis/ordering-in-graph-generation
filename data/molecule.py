@@ -54,3 +54,39 @@ class MolecularDatasetsOccur2SMILES(Dataset):
             occur = F.one_hot(occur, num_classes=self.occur_cls).float() 
             label = F.one_hot(label, num_classes=self.smile_cls).float()
         return occur, label
+    
+
+
+class MolecularDatasetsAtoms2SMILES(Dataset):
+    """
+    Molecule dataset: Atom Occurrences to SMILES graph prediction.
+    """
+    def __init__(
+        self, 
+        atom_file:  str, 
+        smiles_file: str, 
+        smile_cls: int = 27,
+        one_hot: bool = True,
+        **kwargs,
+    ):
+        super().__init__()
+        # Load SMILES molecule representation
+        self.smiles = np.load(smiles_file, allow_pickle=True)
+
+        # Build atom occurrences
+        self.atoms = np.load(atom_file, allow_pickle=True)
+
+        # register variables
+        self.one_hot = one_hot
+        self.smile_cls = smile_cls
+
+    def __len__(self):
+        return len(self.smiles)
+
+    def __getitem__(self, idx):
+        atoms = torch.from_numpy(self.atoms[idx]).float()
+        label = [smiles_dict[s] for s in self.smiles[idx]]
+        label = torch.tensor(label, dtype=torch.long)
+        if self.one_hot:
+            label = F.one_hot(label, num_classes=self.smile_cls).float()
+        return atoms, label

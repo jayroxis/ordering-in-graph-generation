@@ -230,6 +230,7 @@ class TransformerEncoder(nn.Module):
         num_heads: int = 8, 
         dropout: float = 0.0,
         transformer_depth = 1,
+        pos_emb: bool = True,
         module_config: dict = {}, 
         **kwargs,
     ):
@@ -238,6 +239,7 @@ class TransformerEncoder(nn.Module):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.d_model = d_model
+        self.pos_emb = pos_emb
 
         # init module registry
         self.module_registry = build_module_registry(
@@ -249,9 +251,10 @@ class TransformerEncoder(nn.Module):
         PositionalEncoder = self.module_registry["pos_enc"]
 
         # initialize the positional embeddings:
-        self.pos_enc = PositionalEncoder(
-            emb_dim=d_model,
-        )
+        if self.pos_emb:
+            self.pos_enc = PositionalEncoder(
+                emb_dim=d_model,
+            )
         
         # output layer
         self.in_proj = FeedForwardLayer(input_dim, d_model)
@@ -275,7 +278,10 @@ class TransformerEncoder(nn.Module):
 
         """
         features = self.in_proj(x)
-        tokens = features + self.pos_enc(features)
+        if self.pos_emb:
+            tokens = features + self.pos_enc(features)
+        else:
+            tokens = features
         tokens = self.transformer_encoder(tokens)
         tokens = self.fc(tokens)
         return tokens
