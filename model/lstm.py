@@ -118,8 +118,8 @@ def lstm_xlarge(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        hidden_dim=1536, 
-        num_layers=8, 
+        hidden_dim=1600, 
+        num_layers=6, 
         dropout=dropout, 
     )
     return model
@@ -138,7 +138,7 @@ def lstm_gigantic(
         input_dim=input_dim, 
         output_dim=output_dim, 
         hidden_dim=2560, 
-        num_layers=8, 
+        num_layers=6, 
         dropout=dropout, 
     )
     return model
