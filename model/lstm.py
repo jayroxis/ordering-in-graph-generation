@@ -46,8 +46,8 @@ def lstm_tiny(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        d_model=384, 
-        num_layers=4, 
+        d_model=512, 
+        num_layers=2, 
         dropout=dropout, 
     )
     return model
@@ -82,7 +82,7 @@ def lstm_medium(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        d_model=768, 
+        d_model=1024, 
         num_layers=4, 
         dropout=dropout, 
     )
@@ -100,8 +100,8 @@ def lstm_large(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        d_model=1024, 
-        num_layers=4, 
+        d_model=1280, 
+        num_layers=6, 
         dropout=dropout, 
     )
     return model
@@ -119,7 +119,7 @@ def lstm_xlarge(
         input_dim=input_dim, 
         output_dim=output_dim, 
         d_model=1536, 
-        num_layers=4, 
+        num_layers=8, 
         dropout=dropout, 
     )
     return model
@@ -138,7 +138,7 @@ def lstm_gigantic(
         input_dim=input_dim, 
         output_dim=output_dim, 
         d_model=2560, 
-        num_layers=4, 
+        num_layers=8, 
         dropout=dropout, 
     )
     return model
@@ -156,6 +156,7 @@ class LSTM(nn.Module):
             hidden_dim: int = 512, 
             num_layers: int = 3, 
             dropout: float = 0.0, 
+            batch_first: bool = True,
             bidirectional: bool = False,
             **kwargs,
     ):
