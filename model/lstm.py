@@ -101,7 +101,7 @@ def lstm_large(
         input_dim=input_dim, 
         output_dim=output_dim, 
         hidden_dim=1280, 
-        num_layers=6, 
+        num_layers=5, 
         dropout=dropout, 
     )
     return model
@@ -138,7 +138,7 @@ def lstm_gigantic(
         input_dim=input_dim, 
         output_dim=output_dim, 
         hidden_dim=2560, 
-        num_layers=6, 
+        num_layers=7, 
         dropout=dropout, 
     )
     return model
