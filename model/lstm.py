@@ -82,8 +82,8 @@ def lstm_medium(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        hidden_dim=1024, 
-        num_layers=4, 
+        hidden_dim=768, 
+        num_layers=5, 
         dropout=dropout, 
     )
     return model
@@ -100,7 +100,7 @@ def lstm_large(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        hidden_dim=1280, 
+        hidden_dim=1024, 
         num_layers=5, 
         dropout=dropout, 
     )
@@ -118,7 +118,7 @@ def lstm_xlarge(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        hidden_dim=1600, 
+        hidden_dim=1536, 
         num_layers=6, 
         dropout=dropout, 
     )
