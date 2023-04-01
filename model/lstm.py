@@ -27,7 +27,7 @@ def lstm_nano(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        d_model=256, 
+        hidden_dim=256, 
         num_layers=2, 
         dropout=dropout, 
     )
@@ -46,7 +46,7 @@ def lstm_tiny(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        d_model=512, 
+        hidden_dim=512, 
         num_layers=2, 
         dropout=dropout, 
     )
@@ -64,7 +64,7 @@ def lstm_small(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        d_model=512, 
+        hidden_dim=512, 
         num_layers=4, 
         dropout=dropout, 
     )
@@ -82,7 +82,7 @@ def lstm_medium(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        d_model=1024, 
+        hidden_dim=1024, 
         num_layers=4, 
         dropout=dropout, 
     )
@@ -100,7 +100,7 @@ def lstm_large(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        d_model=1280, 
+        hidden_dim=1280, 
         num_layers=6, 
         dropout=dropout, 
     )
@@ -118,7 +118,7 @@ def lstm_xlarge(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        d_model=1536, 
+        hidden_dim=1536, 
         num_layers=8, 
         dropout=dropout, 
     )
@@ -137,7 +137,7 @@ def lstm_gigantic(
     model = LSTM(
         input_dim=input_dim, 
         output_dim=output_dim, 
-        d_model=2560, 
+        hidden_dim=2560, 
         num_layers=8, 
         dropout=dropout, 
     )
