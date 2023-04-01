@@ -10,3 +10,4 @@ https://download.openmmlab.com/mmcv/dist/cu117/torch1.13.0/mmcv_full-1.7.1-cp39-
 mmdet==2.28.2
 git+https://github.com/cocodataset/panopticapi.git
 torchmetrics
+scipy

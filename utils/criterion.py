@@ -8,6 +8,8 @@ import torch.nn.functional as F
 
 import torchmetrics
 from timm.models.registry import register_model
+from scipy.optimize import linear_sum_assignment
+
 
 
 def permutation_invariant_errors(x, y, p=2, root=True, pad_value=-1):
@@ -110,8 +112,113 @@ class UndirectedGraphLoss(nn.Module):
 
 
 
+@register_model
+class HungarianLoss(nn.Module):
+    """
+    Hungarian Loss for set similarity. Sparse form: O(n^3)
+    """
+    def __init__(self, pairwise_distances=None):
+        super(HungarianLoss, self).__init__()
+        if pairwise_distances is None:
+            self.pairwise_distances = self._pairwise_distances
+        else:
+            self.pairwise_distances = pairwise_distances
+
+    def _pairwise_distances(self, x, y):
+        """
+        Computes pairwise distances between two sets of vectors x and y.
+        This will be used as default if no external metric is provided.
+        Args:
+            x: Tensor of shape (B, L, D).
+            y: Tensor of shape (B, L, D).
+        Returns:
+            Tensor of shape (B, L, L) with pairwise distances.
+        """
+        x = x.unsqueeze(2)
+        y = y.unsqueeze(1)
+        return torch.norm(x - y, dim=-1)
+
+    def forward(self, pred, target):
+        """
+        Compute the Hungarian loss between the predicted set and target set.
+        Args:
+            pred: Tensor of shape (B, L, D), predicted set of vectors.
+            target: Tensor of shape (B, L, D), target set of vectors.
+        Returns:
+            Scalar loss value.
+        """
+        assert pred.shape == target.shape
+        B, L, _ = pred.shape
+        total_loss = 0.0
+
+        pairwise_dist = self.pairwise_distances(pred, target)
+
+        for b in range(B):
+            cost_matrix = pairwise_dist[b].detach().cpu().numpy()
+            row_ind, col_ind = linear_sum_assignment(cost_matrix)
+            total_loss += pairwise_dist[b, row_ind, col_ind].sum()
+
+        return total_loss / B
+
+
+@register_model
+class SinkhornLoss(nn.Module):
+    """
+    Sinkhorn-Knopp Loss for set similarity. Dense form: O(n^2 log n)
+    """
+    def __init__(self, pairwise_distances=None, epsilon=0.1, max_iter=50):
+        super(SinkhornLoss, self).__init__()
+        self.epsilon = epsilon
+        self.max_iter = max_iter
+        if pairwise_distances is None:
+            self.pairwise_distances = self._pairwise_distances
+        else:
+            self.pairwise_distances = pairwise_distances
+
+
+    def _pairwise_distances(self, x, y):
+        """
+        Computes pairwise distances between two sets of vectors x and y.
+        This will be used as default if no external metric is provided.
+        Args:
+            x: Tensor of shape (B, L, D).
+            y: Tensor of shape (B, L, D).
+        Returns:
+            Tensor of shape (B, L, L) with pairwise distances.
+        """
+        x = x.unsqueeze(2)
+        y = y.unsqueeze(1)
+        return torch.norm(x - y, dim=3)
+
+    def sinkhorn_iter(self, cost_matrix):
+        B, L, _ = cost_matrix.shape
+        K = torch.exp(-self.epsilon * cost_matrix)
+        u = torch.ones(B, L, 1, device=K.device) / L
+        for _ in range(self.max_iter):
+            v = 1.0 / (torch.matmul(K.transpose(1, 2), u) + 1e-8)
+            u = 1.0 / (torch.matmul(K, v) + 1e-8)
+        P = u * K * v.transpose(1, 2)
+        return P
+
+    def forward(self, pred, target):
+        assert pred.shape == target.shape
+        B, L, _ = pred.shape
+        total_loss = 0.0
+
+        pairwise_dist = self.pairwise_distances(pred, target)
+        P = self.sinkhorn_iter(pairwise_dist)
+
+        for b in range(B):
+            total_loss += torch.sum(P[b] * pairwise_dist[b])
+
+        return total_loss / B
+
+
+
+@register_model
 class UnorderedUndirectedGraphLoss(nn.Module):
     """
+    Similar to Hungarian loss but used for Auto-Regressive model.
     L1 + L2 Loss for node pairs on an undirected graph. The errors
     are calculated using permutation invariant error that does not 
     enforce a strict ordering in comparing prediction vs GT.
@@ -142,8 +249,6 @@ class UnorderedUndirectedGraphLoss(nn.Module):
         
         # Compute final loss as the sum of MSE and L1 losses
         final_loss = mse_loss + l1_loss
-        if torch.isnan(final_loss).any() or torch.isinf(final_loss).any():
-            import pdb; pdb.set_trace()
         return final_loss.mean()
     
 
@@ -228,40 +333,3 @@ class DimensionwiseHybridLoss(nn.Module):
         return repr_str
 
 
-@register_model
-class PSGRelationalLoss(nn.Module):
-    def __init__(
-        self,
-        object_classes: int = 133,
-        predicate_classes: int = 56,
-        loss_func: dict = {"class": "nn.CrossEntropyLoss"},
-    ):
-        """
-        This module is for target relational labels are not one-hot
-        encoded. 
-        For one-hot encoded labels. Use the `DimensionwiseHybridLoss`.
-        """
-        super(PSGRelationalLoss, self).__init__()
-        loss_class = eval(loss_func["class"])
-        loss_params = loss_func.get("params", {})
-        self.loss_func = loss_class(**loss_params)
-        self.obj_cls = object_classes
-        self.pd_cls = predicate_classes
-
-    def forward(self, pred, target):
-        # Convert target to one-hot
-        gt_triplelet = [
-            F.one_hot(target[..., 0], num_classes=self.obj_cls).float(),
-            F.one_hot(target[..., 1], num_classes=self.pd_cls).float(),
-            F.one_hot(target[..., 2], num_classes=self.obj_cls).float(),
-        ]
-        pred_triplelet = [
-            pred[..., :self.obj_cls],
-            pred[..., self.obj_cls:-self.obj_cls],
-            pred[..., -self.obj_cls:],
-        ]
-        loss = 0
-        for i in range(3):
-            print(pred_triplelet[i], gt_triplelet[i])
-            loss = loss + self.loss_func(pred_triplelet[i], gt_triplelet[i])
-        return loss
