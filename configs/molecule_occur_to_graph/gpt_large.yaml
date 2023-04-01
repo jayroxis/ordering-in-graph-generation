@@ -8,7 +8,7 @@ data:
   class: StandardDataModule
 
   train_set:
-    class: MolecularDatasetsOccur2SMILES
+    class: MolecularDatasetsAtoms2SMILES
     params:
       atom_file:  archived/moses/train/node_feat.npy
       smiles_file: archived/moses/train/label.npy
@@ -17,7 +17,7 @@ data:
       one_hot: True
 
   val_set:
-    class: MolecularDatasetsOccur2SMILES
+    class: MolecularDatasetsAtoms2SMILES
     params:
       atom_file:  archived/moses/val/node_feat.npy
       smiles_file: archived/moses/val/label.npy

@@ -6,6 +6,9 @@ from .modules import *
 # register GPT models
 from .gpt import *
 
+# register LSTM models
+from .lstm import *
+
 # register all kinds of encoders
 from .encoders import *
 
