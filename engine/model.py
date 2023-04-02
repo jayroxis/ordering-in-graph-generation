@@ -54,6 +54,15 @@ class VisionSequenceModel(pl.LightningModule):
 
     def build_models(self):
         # Define generator models
+        if self.safe_check_param_group:
+            model = build_model(
+                model_name=self.model_config['class'],
+                **self.model_config['params']
+            )
+            params = model.get_params_group()
+            is_match = match_param_group(model, params)
+            assert is_match, "The number of parameters in `params_group` " + \
+                             "do not match the model's parameters."
         self.model = build_model(
             model_name=self.model_config['class'],
             **self.model_config['params']
@@ -252,7 +261,8 @@ class VisionSequenceModel(pl.LightningModule):
         prefix = "val/"
         self.log_dict(
             {prefix + k: v for k, v in stats.items()}, 
-            prog_bar=False
+            prog_bar=False,
+            sync_dist=True,
         )
         if hasattr(self, "ema_model"):
             pred = self.ema_model.module(img, seq[:, :-1])
@@ -264,7 +274,8 @@ class VisionSequenceModel(pl.LightningModule):
             prefix = "val/ema/"
             self.log_dict(
                 {prefix + k: v for k, v in stats.items()}, 
-                prog_bar=False
+                prog_bar=False,
+                sync_dist=True,
             )
 
     def lr_scheduler_step(self, *args, **kwargs):

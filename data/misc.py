@@ -5,6 +5,7 @@ from torch.nn.utils.rnn import pad_sequence
 import numpy as np
 import networkx as nx
 from utils.helpers import shuffle_tensor
+from .spectral import *
 
 
 
@@ -413,3 +414,148 @@ def get_node_pairs(V, E):
 
 
         
+# ======================== Sorting Options ==========================
+
+class latent_sort:
+    def __init__(self, encoder_path: str, **kwargs):
+        self.encoder=torch.jit.load(
+            encoder_path
+        )
+        
+    def __call__(self, seq):
+        """
+        Sort a D-dimensional sequence on the 1D latent that is obtained
+        using a Neural Network encoder.
+        """
+        latent = self.encoder(seq)
+        idx = torch.argsort(latent.flatten())
+        sorted_seq = seq[idx]
+        return sorted_seq
+
+
+def random_sort(seq):
+    """
+    Randomly shuffle the tokens.
+    """
+    return shuffle_tensor(seq, dim=1)
+
+
+def no_sort(seq):
+    """
+    Simply no sorting.
+    """
+    return seq
+
+
+def svd_sort(seq):
+    """
+    Sort a D-dimensional sequence along the direction of maximum variance 
+    using Singular Value Decomposition (SVD).
+
+    This function takes a D-dimensional input sequence and sorts it based 
+    on its projections onto the most significant direction in the dataset, 
+    which is found using SVD. 
+
+    Parameters:
+    seq (torch.Tensor): A D-dimensional input sequence represented as a torch.Tensor.
+
+    Returns:
+    torch.Tensor: The input sequence sorted along the direction of maximum variance.
+
+    Example:
+    >>> import torch
+    >>> data = torch.tensor([[1.0, 2.0], [2.0, 1.0], [1.5, 1.5]])
+    >>> sorted_data = svd_sort(data)
+    >>> print(sorted_data)
+    tensor([[2.0000, 1.0000],
+            [1.5000, 1.5000],
+            [1.0000, 2.0000]])
+    """
+    _, s, v = torch.linalg.svd(seq)
+    idx = torch.argmax(s)
+    reduced = v[:, idx] @ seq.T
+    idx = reduced.argsort()
+    return seq[idx]
+
+
+
+def lex_sort(seq):
+    """
+    Sort a 2D PyTorch tensor's rows lexicographically.
+
+    Args:
+        seq (tensor): A 2D PyTorch tensor of shape (L, D).
+
+    Returns:
+        tensor: A sorted 2D PyTorch tensor.
+    """
+    # Convert the input tensor to a list of tuples
+    seq_tuples = [tuple(row) for row in seq]
+
+    # Sort the list of tuples lexicographically
+    sorted_seq_tuples = sorted(seq_tuples)
+
+    # Convert the sorted list of tuples back to a PyTorch tensor
+    sorted_seq = torch.tensor(sorted_seq_tuples, dtype=seq.dtype)
+
+    return sorted_seq
+
+
+
+def mean_square_sort(seq, ascending=False):
+    """
+    Sorts the input tensor E based on the root mean square value of each row.
+    
+    Args:
+        E (torch.Tensor): Input tensor to be sorted. Must have shape (n_samples, n_features).
+        ascending (bool): Whether to sort in ascending or descending order. Default is False (descending).
+    
+    Returns:
+        sorted_E (torch.Tensor): Sorted tensor, with the same shape as E.
+    """
+    reduced = torch.sqrt(torch.mean(seq ** 2, dim=-1))
+    indices = torch.argsort(reduced) if ascending else torch.argsort(-reduced)
+    sorted_seq = seq[indices]
+    return sorted_seq
+
+
+
+def spectral_sort(node_pairs, alpha=0.5):
+    """
+    Sort the edges (node pairs) by graph Laplacian.
+
+    Args:
+        node_pairs (tensor): A tensor containing node pairs corresponding to the edges in the graph.
+        alpha (float, optional): A hyperparameter controlling the relative weights of edge similarity
+                                  and midpoint similarity. Default value is 0.5.
+
+    Returns:
+        tensor: A tensor containing the sorted node pairs based on spectral ordering.
+    """
+    # Compute combined similarity matrix S with the given alpha value
+    S = get_combined_similarity(node_pairs, alpha=alpha)
+
+    # Calculate degree matrix D and Laplacian matrix L
+    D = torch.diag(S.sum(dim=1))
+    L = D - S
+
+    # Find eigenvectors V and eigenvalues E of the Laplacian matrix L
+    E, V = torch.linalg.eigh(L)
+
+    # Calculate inverse similarity (or distance) matrix U
+    inv_S = 1.0 / (S + 1e-9) - 1.0
+
+    # Project inverse similarity (or distance) matrix U onto the first two Laplacian eigenvectors
+    P = inv_S @ V
+
+    # Use the mean from the first and second eigenpairs (spectral gap and Fiedler vector)
+    W = P[:, :2].mean(1)
+
+    # Get edge ordering indices based on W
+    idx = torch.argsort(W)
+
+    # Return sorted node pairs based on spectral ordering
+    return node_pairs[idx]
+
+
+
