@@ -13,14 +13,15 @@ class PadSequenceConstant:
     A collate function for PyTorch DataLoader that pads sequences in batches to the same length.
     Supports both list/tuple of tensors and single tensor batches.
     """
-    def __init__(self, pad_value=-1):
+    def __init__(self, pad_value=-1, pad_length=None):
         """
         Initializes the PadSequence instance with a padding value.
         Args:
             pad_value: The value to use for padding sequences to the same length.
         """
         self.pad_value = pad_value
-    
+        self.pad_length = pad_length
+
     def _pad_sequence(self, seq):
         """
         Pads a list of sequences with self.pad_value to the same length.
@@ -29,11 +30,32 @@ class PadSequenceConstant:
         Returns:
             The padded tensor of shape (batch_size, max_seq_len, feature_dim).
         """
-        seq_padded = pad_sequence(
-            seq, 
-            batch_first=True, 
-            padding_value=self.pad_value
-        )
+        if self.pad_length is None:
+            seq_padded = pad_sequence(
+                seq, 
+                batch_first=True, 
+                padding_value=self.pad_value
+            )
+        else:
+            if seq[0].ndim == 3:   # 3D tensor indicates img
+                return torch.stack(seq, dim=0)
+            max_seq_len = self.pad_length
+            padded_seq = []
+            for s in seq:
+                if s.size(0) > max_seq_len:
+                    raise ValueError("Sequence length is greater than the given pad length.")
+                elif s.size(0) < max_seq_len:
+                    pad_tensor = torch.full(
+                        (max_seq_len - s.size(0), *s.size()[1:]),
+                        self.pad_value,
+                        dtype=s.dtype,
+                        device=s.device
+                    )
+                    s_padded = torch.cat([s, pad_tensor], dim=0)
+                else:
+                    s_padded = s
+                padded_seq.append(s_padded)
+            seq_padded = torch.stack(padded_seq, dim=0)
         return seq_padded
         
     def __call__(self, batch):
@@ -74,7 +96,7 @@ class PadSequenceBinary:
 
     Supports both list/tuple of tensors and single tensor batches.
     """
-    def __init__(self, one_indices):
+    def __init__(self, one_indices, pad_length=None):
         """
         Initializes the PadSequenceBinary instance with the indices 
         to set to one and the rest to zero.
@@ -89,6 +111,7 @@ class PadSequenceBinary:
             one_indices = one_indices.strip(" ").split(",")
             one_indices = [int(i) for i in one_indices if i != ""]
         self.one_indices = one_indices
+        self.pad_length = pad_length
         
     def _pad_sequence(self, seq):
         """
@@ -101,11 +124,32 @@ class PadSequenceBinary:
             The padded tensor of shape (batch_size, max_seq_len, 
             feature_dim).
         """
-        seq_padded = pad_sequence(
-            seq,
-            batch_first=True,
-            padding_value=0  # Initialize with all zeros
-        )
+        if self.pad_length is None:
+            seq_padded = pad_sequence(
+                seq,
+                batch_first=True,
+                padding_value=0  # Initialize with all zeros
+            )
+        else:
+            if seq[0].ndim == 3:   # 3D tensor indicates img
+                return torch.stack(seq, dim=0)
+            max_seq_len = self.pad_length
+            padded_seq = []
+            for s in seq:
+                if s.size(0) > max_seq_len:
+                    raise ValueError("Sequence length is greater than the given pad length.")
+                elif s.size(0) < max_seq_len:
+                    pad_tensor = torch.zeros(
+                        (max_seq_len - s.size(0), *s.size()[1:]),
+                        dtype=s.dtype,
+                        device=s.device
+                    )
+                    s_padded = torch.cat([s, pad_tensor], dim=0)
+                else:
+                    s_padded = s
+                padded_seq.append(s_padded)
+            seq_padded = torch.stack(padded_seq, dim=0)
+
         if seq_padded.ndim == 3:
             padded_mask = (seq_padded == 0).all(-1).unsqueeze(-1)
             pad_value = torch.zeros(1, 1, seq_padded.shape[-1], device=seq_padded.device)
@@ -234,7 +278,6 @@ def no_sort(seq):
     Simply no sorting.
     """
     return seq
-
 
 
 def svd_sort(seq):

@@ -10,7 +10,7 @@ data:
   train_set:
     class: RenderedPlanarGraphDataset
     params:
-      sort_func: mean_square_sort
+      sort_func: no_sort
       num_samples: 40000
       img_size: 256
       num_points: 15
@@ -28,11 +28,12 @@ data:
         class: PadSequenceConstant
         params:
           pad_value: -1.0
+          pad_length: 40
 
   val_set:
     class: RenderedPlanarGraphDataset
     params:
-      sort_func: mean_square_sort
+      sort_func: no_sort
       num_samples: 500
       img_size: 256
       num_points: 15
@@ -50,6 +51,7 @@ data:
         class: PadSequenceConstant
         params:
           pad_value: -1.0
+          pad_length: 40
 
 # ==================== Training Configs =========================
 training:
@@ -87,7 +89,9 @@ training:
       class: nn.MSELoss
       weight: 0.0
     ug_loss:
-      class: UndirectedGraphLoss
+      class: HungarianLoss
+      params:
+        pairwise_distances: pairwise_undirected_graph_distance
       weight: 1.0
 
   eval_metrics:
@@ -98,22 +102,27 @@ training:
       class: nn.MSELoss
       weight: 0.0
     ug_loss:
-      class: UndirectedGraphLoss
+      class: HungarianLoss
+      params:
+        pairwise_distances: pairwise_undirected_graph_distance
       weight: 1.0
 
 # ====================== Model Configs =========================
 
 model:
   name: VisualGraphGPT
-  class: vision_gpt
+  class: vision_graph_transformer
   params:
     in_chans: 3
     output_dim: 4
     emb_dim: 512
     img_size: 256
-    gpt_name: gpt_medium
+    set_gen_name: GraphTransformer
     conv_backbone: efficientnet_b0
     pretrained: False
+    set_enc: MLPEncoder
+    set_gen_cfg:
+      max_set_size: 40
     stop_detector_cfg:
       model_name: StopTokenDetectorFloat
       stop_value: -1.0

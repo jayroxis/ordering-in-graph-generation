@@ -14,14 +14,6 @@ def build_model(model_name: str, *args, **kwargs):
     """
     if "model_name" in kwargs:
         raise ValueError(f"Got multiple model_name = {kwargs}.")
-    # If given model_name not in timm registry, use default name
-    if model_name not in registry._model_entrypoints:
-        msg = f"`model_name`: \"{model_name}\" and " + \
-                " is not in `timm` model registry.\n" + \
-                f"Please make sure you have \"{model_name}\" " + \
-                f"registed using in timm registry " + \
-                "\"timm.models.registry.register_model\"."
-        raise ValueError(msg)
     if "lr" in kwargs:
         lr = float(kwargs.pop("lr"))
     else:
@@ -30,7 +22,20 @@ def build_model(model_name: str, *args, **kwargs):
         weight_decay = float(kwargs.pop("weight_decay"))
     else:
         weight_decay = None
-    model = create_model(model_name, *args, **kwargs)
+
+    # If given model_name not in timm registry, use default name
+    if model_name not in registry._model_entrypoints:
+        try:
+            model = eval(model_name)(*args, **kwargs)
+        except NameError:
+            msg = f"`model_name`: \"{model_name}\" and " + \
+                    " is not in `timm` model registry.\n" + \
+                    f"Please make sure you have \"{model_name}\" " + \
+                    f"registed using in timm registry " + \
+                    "\"timm.models.registry.register_model\"."
+            raise ValueError(msg)
+    else:
+        model = create_model(model_name, *args, **kwargs)
     if lr is not None:
         model.lr = lr
     if weight_decay is not None:
@@ -138,3 +143,35 @@ def get_params_group(model, lr, weight_decay=0.0, **kwargs):
             "weight_decay": weight_decay
         }]
     return params_group
+
+
+
+def match_param_group(model, param_group):
+    """
+    Determines whether the parameters in a given model 
+    match the parameters in a specified parameter group.
+
+    Args:
+        model: A PyTorch model.
+        param_group: A list of dictionaries representing 
+            parameter groups. Each dictionary should have a 
+            'params' key containing a list of parameter tensors.
+
+    Returns:
+        A boolean value indicating whether the parameters 
+        in the model match the parameters in the specified group.
+    """
+    # Get the total number of parameters in the model
+    model_num_params = sum(p.numel() for p in model.parameters())
+
+    # Get the total number of parameters in the specified parameter group
+    param_group_num_params = sum(
+        p.numel() for group in param_group for p in group['params']
+    )
+
+    # Compare the number of parameters in the model and 
+    # in the parameter group
+    if model_num_params == param_group_num_params:
+        return True
+    else:
+        return False

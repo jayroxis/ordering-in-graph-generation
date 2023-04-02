@@ -11,6 +11,7 @@ from timm.models.registry import register_model
 from scipy.optimize import linear_sum_assignment
 
 
+# ====================== Distance Metrics ========================
 
 def permutation_invariant_errors(x, y, p=2, root=True, pad_value=-1):
     """
@@ -62,6 +63,43 @@ def permutation_invariant_errors(x, y, p=2, root=True, pad_value=-1):
     errors[pad_mask.all(-1)] = orig_err[pad_mask.all(-1)]
 
     return errors / N
+
+
+def pairwise_undirected_graph_distance(x, y):
+    """
+    Computes pairwise undirected graph distance between two sets of vectors x and y.
+    
+    Args:
+        x: Tensor of shape (B, L, D).
+        y: Tensor of shape (B, L, D).
+        
+    Returns:
+        Tensor of shape (B, L, L) with pairwise undirected graph distances.
+    """
+    assert x.ndim == 3, f"x must be a 3-D tensor, got {x.shape} instead."
+    B, L, D = x.shape
+    assert D % 2 == 0, f"D must be an even number, got {D} instead."
+    half_D = int(D // 2)
+
+    x = x.unsqueeze(2)
+    y = y.unsqueeze(1)
+
+    y_reversed = torch.cat([y[..., half_D:], y[..., :half_D]], dim=-1)
+
+    mse_loss_1 = ((x - y) ** 2).mean(-1)
+    mse_loss_2 = ((x - y_reversed) ** 2).mean(-1)
+    mse_loss = torch.minimum(mse_loss_1, mse_loss_2)
+
+    l1_loss_1 = torch.abs(x - y).mean(-1)
+    l1_loss_2 = torch.abs(x - y_reversed).mean(-1)
+    l1_loss = torch.minimum(l1_loss_1, l1_loss_2)
+
+    distance = mse_loss + l1_loss
+    return distance
+
+
+
+# ====================== PyTorch Loss Modules ========================
 
 
 @register_model
@@ -117,10 +155,16 @@ class HungarianLoss(nn.Module):
     """
     Hungarian Loss for set similarity. Sparse form: O(n^3)
     """
-    def __init__(self, pairwise_distances=None):
+    def __init__(self, pairwise_distances=None, reduction="mean"):
         super(HungarianLoss, self).__init__()
+        self.reduction = reduction
         if pairwise_distances is None:
             self.pairwise_distances = self._pairwise_distances
+        elif type(pairwise_distances) == str:
+            self.pairwise_distances = eval(pairwise_distances)
+        elif type(pairwise_distances) == dict:
+            pd = pairwise_distances
+            self.pairwise_distances = eval(pd["class"])(**(pd.get("params", {})))
         else:
             self.pairwise_distances = pairwise_distances
 
@@ -156,62 +200,106 @@ class HungarianLoss(nn.Module):
         for b in range(B):
             cost_matrix = pairwise_dist[b].detach().cpu().numpy()
             row_ind, col_ind = linear_sum_assignment(cost_matrix)
-            total_loss += pairwise_dist[b, row_ind, col_ind].sum()
-
+            if self.reduction == "sum":
+                total_loss += pairwise_dist[b, row_ind, col_ind].sum()
+            else:
+                total_loss += pairwise_dist[b, row_ind, col_ind].mean()
         return total_loss / B
 
 
-@register_model
-class SinkhornLoss(nn.Module):
-    """
-    Sinkhorn-Knopp Loss for set similarity. Dense form: O(n^2 log n)
-    """
-    def __init__(self, pairwise_distances=None, epsilon=0.1, max_iter=50):
-        super(SinkhornLoss, self).__init__()
-        self.epsilon = epsilon
-        self.max_iter = max_iter
-        if pairwise_distances is None:
-            self.pairwise_distances = self._pairwise_distances
-        else:
-            self.pairwise_distances = pairwise_distances
 
+# @register_model
+# class SinkhornLoss(nn.Module):
+#     """
+#     Sinkhorn-Knopp Loss for set similarity. Dense form: O(n^2 log n)
+#     [WARNING]: This may result in inaccurate prediction, use with caution!
+#     If you do not know when to use this loss, use Hungarian Loss instead.
+#     """
+#     def __init__(self, pairwise_distances=None, epsilon=0.1, max_iter=50, reduction="mean"):
+#         super(SinkhornLoss, self).__init__()
+#         self.epsilon = epsilon
+#         self.max_iter = max_iter
+#         self.reduction = reduction
+#         if pairwise_distances is None:
+#             self.pairwise_distances = self._pairwise_distances
+#         elif type(pairwise_distances) == str:
+#             self.pairwise_distances = eval(pairwise_distances)
+#         elif type(pairwise_distances) == dict:
+#             pd = pairwise_distances
+#             self.pairwise_distances = eval(pd["class"])(**(pd.get("params", {})))
+#         else:
+#             self.pairwise_distances = pairwise_distances
 
-    def _pairwise_distances(self, x, y):
-        """
-        Computes pairwise distances between two sets of vectors x and y.
-        This will be used as default if no external metric is provided.
-        Args:
-            x: Tensor of shape (B, L, D).
-            y: Tensor of shape (B, L, D).
-        Returns:
-            Tensor of shape (B, L, L) with pairwise distances.
-        """
-        x = x.unsqueeze(2)
-        y = y.unsqueeze(1)
-        return torch.norm(x - y, dim=3)
+#     def _pairwise_distances(self, x, y):
+#         """
+#         Computes pairwise distances between two sets of vectors x and y.
+#         This will be used as default if no external metric is provided.
+#         Args:
+#             x: Tensor of shape (B, L, D).
+#             y: Tensor of shape (B, L, D).
+#         Returns:
+#             Tensor of shape (B, L, L) with pairwise distances.
+#         """
+#         x = x.unsqueeze(2)
+#         y = y.unsqueeze(1)
+#         return torch.norm(x - y, dim=3)
 
-    def sinkhorn_iter(self, cost_matrix):
-        B, L, _ = cost_matrix.shape
-        K = torch.exp(-self.epsilon * cost_matrix)
-        u = torch.ones(B, L, 1, device=K.device) / L
-        for _ in range(self.max_iter):
-            v = 1.0 / (torch.matmul(K.transpose(1, 2), u) + 1e-8)
-            u = 1.0 / (torch.matmul(K, v) + 1e-8)
-        P = u * K * v.transpose(1, 2)
-        return P
+#     # def sinkhorn_iter(self, cost_matrix):
+#     #     B, L, _ = cost_matrix.shape
+#     #     K = torch.exp(-self.epsilon * cost_matrix)
+#     #     u = torch.ones(B, L, 1, device=K.device) / L
+#     #     for _ in range(self.max_iter):
+#     #         v = 1.0 / (torch.matmul(K.transpose(1, 2), u) + 1e-8)
+#     #         u = 1.0 / (torch.matmul(K, v) + 1e-8)
+#     #     P = u * K * v.transpose(1, 2)
+#     #     return P
 
-    def forward(self, pred, target):
-        assert pred.shape == target.shape
-        B, L, _ = pred.shape
-        total_loss = 0.0
+#     def sinkhorn_iter(self, cost_matrix):
+#         B, L, _ = cost_matrix.shape
+#         K = torch.exp(-self.epsilon * cost_matrix)
+#         u = torch.ones(B, L, 1, device=K.device) / L
+#         for _ in range(self.max_iter):
+#             v = 1.0 / (torch.matmul(K.transpose(1, 2), u) + 1e-8)
+#             u = 1.0 / (torch.matmul(K, v) + 1e-8)
+#             u = u / u.sum(dim=1, keepdim=True)  # Row normalization
+#             v = v / v.sum(dim=2, keepdim=True)  # Column normalization
+#         P = u * K * v.transpose(1, 2)
+#         return P
 
-        pairwise_dist = self.pairwise_distances(pred, target)
-        P = self.sinkhorn_iter(pairwise_dist)
+#     # def forward(self, pred, target):
+#     #     assert pred.shape == target.shape
+#     #     B, L, _ = pred.shape
+#     #     total_loss = 0.0
 
-        for b in range(B):
-            total_loss += torch.sum(P[b] * pairwise_dist[b])
+#     #     pairwise_dist = self.pairwise_distances(pred, target)
+#     #     pairwise_dist = pairwise_dist - pairwise_dist.min(dim=1, keepdim=True)[0]
+#     #     pairwise_dist = pairwise_dist - pairwise_dist.min(dim=2, keepdim=True)[0]
+#     #     max_abs = pairwise_dist.abs().max()
+#     #     pairwise_dist = pairwise_dist / max_abs + 1e-8
+#     #     P = self.sinkhorn_iter(pairwise_dist)
 
-        return total_loss / B
+#     #     for b in range(B):
+#     #         if self.reduction == "sum":
+#     #             total_loss += torch.sum(P[b] * pairwise_dist[b])
+#     #         else:
+#     #             total_loss += torch.mean(P[b] * pairwise_dist[b])
+#     #     return total_loss / B
+
+#     def forward(self, pred, target):
+#         assert pred.shape == target.shape
+#         B, L, _ = pred.shape
+#         total_loss = 0.0
+
+#         pairwise_dist = self.pairwise_distances(pred, target)
+#         P = self.sinkhorn_iter(pairwise_dist)
+
+#         for b in range(B):
+#             if self.reduction == "sum":
+#                 total_loss += torch.sum(P[b] * pairwise_dist[b])
+#             else:
+#                 total_loss += torch.mean(P[b] * pairwise_dist[b])
+
+#         return (total_loss + 1e-8) / B
 
 
 
