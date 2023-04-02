@@ -55,6 +55,9 @@ class VisionSequenceModel(pl.LightningModule):
     def build_models(self):
         # Define generator models
         if self.safe_check_param_group:
+            # ------------------------- DANGER ZONE ---------------------------
+            # [Note]: DO NOT use the `self.model` for checking or it will cause
+            # unexpected training problems that the loss will not go down.
             model = build_model(
                 model_name=self.model_config['class'],
                 **self.model_config['params']
@@ -63,6 +66,7 @@ class VisionSequenceModel(pl.LightningModule):
             is_match = match_param_group(model, params)
             assert is_match, "The number of parameters in `params_group` " + \
                              "do not match the model's parameters."
+            # ------------------------------------------------------------------
         self.model = build_model(
             model_name=self.model_config['class'],
             **self.model_config['params']
