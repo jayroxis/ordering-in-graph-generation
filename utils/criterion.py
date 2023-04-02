@@ -141,8 +141,8 @@ class CustomCrossEntropyLoss(nn.CrossEntropyLoss):
             Tensor: The calculated loss tensor of shape (N, ...).
         """
         # Swap the last and target dimension
-        input = input.transpose(-1, self.dim)
-        target = target.transpose(-1, self.dim)
+        input = input.transpose(1, self.dim)
+        target = target.transpose(1, self.dim)
         
         # Apply the original CrossEntropyLoss function
         loss = super().forward(input, target, *args, **kwargs)
