@@ -103,6 +103,55 @@ def pairwise_undirected_graph_distance(x, y):
 
 
 @register_model
+class CustomCrossEntropyLoss(nn.CrossEntropyLoss):
+    """
+    A custom version of the `nn.CrossEntropyLoss` loss function that allows
+    the user to specify the input dimension.
+    
+    This is useful when the input tensor has more than two dimensions and
+    the user wants to apply the loss function along a different dimension
+    than the default second dimension. By default, `nn.CrossEntropyLoss`
+    applies the loss function to the second dimension of the input tensor.
+    
+    Parameters:
+        dim (int, optional): The input dimension to apply the loss function along.
+                             Default is -1 (last dimension).
+        *args: Variable length argument list to pass to the parent constructor.
+        **kwargs: Arbitrary keyword arguments to pass to the parent constructor.
+    """
+    
+    def __init__(self, dim=-1, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dim = dim
+    
+    def forward(self, input, target, *args, **kwargs):
+        """
+        Applies the custom `nn.CrossEntropyLoss` loss function to the input tensor
+        along the specified dimension.
+        
+        Parameters:
+            input (Tensor): Input tensor of shape (N, C, ...) where N is the batch size,
+                            C is the number of classes, and ... are additional dimensions.
+            target (Tensor): Target tensor of shape (N, ...) where N is the batch size
+                             and ... are additional dimensions.
+            *args: Variable length argument list to pass to the parent forward() method.
+            **kwargs: Arbitrary keyword arguments to pass to the parent forward() method.
+        
+        Returns:
+            Tensor: The calculated loss tensor of shape (N, ...).
+        """
+        # Swap the last and target dimension
+        input = input.transpose(-1, self.dim)
+        target = target.transpose(-1, self.dim)
+        
+        # Apply the original CrossEntropyLoss function
+        loss = super().forward(input, target, *args, **kwargs)
+        
+        return loss
+
+
+
+@register_model
 class UndirectedGraphLoss(nn.Module):
     """
     L1 + L2 Loss for node pairs on an undirected graph.
