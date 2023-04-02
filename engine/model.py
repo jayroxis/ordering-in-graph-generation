@@ -54,6 +54,15 @@ class VisionSequenceModel(pl.LightningModule):
 
     def build_models(self):
         # Define generator models
+        if self.safe_check_param_group:
+            model = build_model(
+                model_name=self.model_config['class'],
+                **self.model_config['params']
+            )
+            params = model.get_params_group()
+            is_match = match_param_group(model, params)
+            assert is_match, "The number of parameters in `params_group` " + \
+                             "do not match the model's parameters."
         self.model = build_model(
             model_name=self.model_config['class'],
             **self.model_config['params']
@@ -160,10 +169,6 @@ class VisionSequenceModel(pl.LightningModule):
         lr = float(optimizer_params.get("lr", 2e-4))
         weight_decay = float(optimizer_params.get("weight_decay", 0.0))
         params = self.model.get_params_group(lr=lr, weight_decay=weight_decay)
-        if self.safe_check_param_group:
-            is_match = match_param_group(self.model, params)
-            assert is_match, "The number of parameters in `params_group` " + \
-                             "do not match the model's parameters."
         opt, sch = self.build_optimizers_and_schedulers(params)
         optimizers.extend(opt)
         schedulers.extend(sch)
@@ -252,7 +257,8 @@ class VisionSequenceModel(pl.LightningModule):
         prefix = "val/"
         self.log_dict(
             {prefix + k: v for k, v in stats.items()}, 
-            prog_bar=False
+            prog_bar=False,
+            sync_dist=True,
         )
         if hasattr(self, "ema_model"):
             pred = self.ema_model.module(img, seq[:, :-1])
@@ -264,7 +270,8 @@ class VisionSequenceModel(pl.LightningModule):
             prefix = "val/ema/"
             self.log_dict(
                 {prefix + k: v for k, v in stats.items()}, 
-                prog_bar=False
+                prog_bar=False,
+                sync_dist=True,
             )
 
     def lr_scheduler_step(self, *args, **kwargs):
