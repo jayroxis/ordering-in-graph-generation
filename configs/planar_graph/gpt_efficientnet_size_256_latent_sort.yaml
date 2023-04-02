@@ -88,16 +88,24 @@ training:
   train_metrics:
     l1_loss: 
       class: nn.L1Loss
-      weight: 1
+      weight: 0.0
     mse_loss:
       class: nn.MSELoss
-      weight: 1
+      weight: 0.0
+    ug_loss:
+      class: UndirectedGraphLoss
+      weight: 1.0
 
   eval_metrics:
     l1_loss: 
       class: nn.L1Loss
+      weight: 0.0
     mse_loss:
       class: nn.MSELoss
+      weight: 0.0
+    ug_loss:
+      class: UndirectedGraphLoss
+      weight: 1.0
 
 # ====================== Model Configs =========================
 

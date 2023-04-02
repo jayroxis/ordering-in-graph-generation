@@ -121,3 +121,20 @@ class StopTokenDetectorCategorical(nn.Module):
                 last_tokens = last_tokens.softmax(-1)
         above_threshold = last_tokens[..., self.stop_idx] > self.threshold
         return above_threshold.all().item()
+    
+
+@register_model
+class DropPath(nn.Module):
+    def __init__(self, p: float = 0.):
+        super().__init__()
+        self.p = p
+
+    def forward(self, x):
+        if self.p == 0. or not self.training:
+            return x
+        keep_prob = 1 - self.p
+        shape = (x.shape[0],) + (1,) * (x.ndim - 1)
+        random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
+        random_tensor.floor_()
+        output = x.div(keep_prob) * random_tensor
+        return output

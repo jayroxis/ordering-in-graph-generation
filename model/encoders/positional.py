@@ -38,7 +38,9 @@ class GaussianEmbedding(nn.Module):
         else:
             self.register_buffer("pos_emb", pos_emb)
 
-    def forward(self, x):
+    def forward(self, x=None):
+        if x is None:
+            return self.pos_emb
         return x + self.pos_emb
     
 
@@ -77,7 +79,9 @@ class FourierEmbedding(nn.Module):
         else:
             self.register_buffer("pos_emb", pos_emb)
 
-    def forward(self, x):
+    def forward(self, x=None):
+        if x is None:
+            return self.pos_emb
         return x + self.pos_emb
     
 
