@@ -188,7 +188,8 @@ class PSGRelationDataset(BasePSGDataset):
         }
         for r in rels:
             r[0] = seg_id_to_obj_id[r[0].item()]
-            r[1] = seg_id_to_obj_id[r[1].item()]
+            r[1] = seg_id_to_obj_id[r[1].item()] - 1
+            r[2] = seg_id_to_obj_id[r[2].item()] - 1
 
         # remove duplicates for semantic graphs
         rels = torch.unique(rels, dim=0)
