@@ -99,6 +99,61 @@ def pairwise_undirected_graph_distance(x, y):
 
 
 
+def pairwise_bce_loss_with_logits(x, y):
+    """
+    Computes pairwise BCELossWithLogits between two sets of vectors x and y.
+    
+    Args:
+        x: Tensor of shape (B, L, D).
+        y: Tensor of shape (B, L, D).
+        
+    Returns:
+        Tensor of shape (B, L, L) with pairwise BCELossWithLogits distances.
+    """
+    assert x.ndim == 3, f"x must be a 3-D tensor, got {x.shape} instead."
+    B, L, D = x.shape
+
+    x = x.unsqueeze(2)  # Shape: (B, L, 1, D)
+    y = y.unsqueeze(1)  # Shape: (B, 1, L, D)
+
+    logits = x - y  # Shape: (B, L, L, D)
+
+    bce_loss = F.binary_cross_entropy_with_logits(
+        logits, 
+        torch.zeros_like(logits), reduction='none'
+    )
+    bce_loss_mean = bce_loss.mean(dim=-1)
+
+    return bce_loss_mean
+
+
+
+def pairwise_cross_entropy(x, y):
+    """
+    Computes pairwise cross-entropy between two sets of vectors x and y.
+
+    Args:
+        x: Tensor of shape (B, L, D).
+        y: Tensor of shape (B, L, D).
+
+    Returns:
+        Tensor of shape (B, L, L) with pairwise cross-entropy distances.
+    """
+    assert x.ndim == 3, f"x must be a 3-D tensor, got {x.shape} instead."
+    B, L, D = x.shape
+
+    x = x.unsqueeze(2)  # Shape: (B, L, 1, D)
+    y = y.unsqueeze(1)  # Shape: (B, 1, L, D)
+
+    x_softmax = F.softmax(x, dim=-1)  # Apply softmax along D dimension
+    y_log_softmax = F.log_softmax(y, dim=-1)  # Apply log_softmax along D dimension
+
+    cross_entropy = -(x_softmax * y_log_softmax).sum(dim=-1)  # Pairwise cross-entropy
+
+    return cross_entropy
+
+
+
 # ====================== PyTorch Loss Modules ========================
 
 

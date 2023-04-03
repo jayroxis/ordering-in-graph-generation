@@ -193,16 +193,17 @@ class PSGRelationDataset(BasePSGDataset):
         for r in rels:
             r[0] = seg_id_to_obj_id[r[0].item()]
             r[1] = seg_id_to_obj_id[r[1].item()]
+            r[2] = r[2] - 1
 
         # remove duplicates for semantic graphs
-        rels = torch.unique(rels, dim=0)
+        rels = torch.unique(rels, dim=0).long()
     
         # one-hot encoding
         if self.one_hot:
             one_hot_rels = torch.cat([
                 F.one_hot(rels[..., 0], num_classes=self.obj_cls + 1).float(),
                 F.one_hot(rels[..., 1], num_classes=self.obj_cls + 1).float(),
-                F.one_hot(rels[..., 2] - 1, num_classes=self.pd_cls + 1).float(), # need to - 1
+                F.one_hot(rels[..., 2], num_classes=self.pd_cls + 1).float(), # need to - 1
             ], dim=-1)
             return img, one_hot_rels
         else:
