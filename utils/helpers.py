@@ -424,3 +424,16 @@ def human_format(num, suffix=''):
             return f"{num:.2f} {unit}{suffix}"
         num /= 1000.0
     return f"{num:.2f} Y{suffix}"
+
+
+
+
+def print_args(args):
+    # Print out the arguments in a table
+    print("Command-line arguments:")
+    print("=" * 120)
+    print("{:<20}{}".format("Argument", "Value"))
+    print("-" * 120)
+    for arg, value in vars(args).items():
+        print("{:<20}{}".format(arg.capitalize(), value))
+    print("=" * 120)
