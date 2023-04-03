@@ -4,6 +4,7 @@ import torch
 import numpy as np 
 from torch.utils.data import Dataset
 from torch.nn import functional as F
+from .misc import lex_sort
 
 
 # Dictionary to encode SMILES: '_' represents [STOP_TOKEN]
@@ -85,6 +86,7 @@ class MolecularDatasetsAtoms2SMILES(Dataset):
 
     def __getitem__(self, idx):
         atoms = torch.from_numpy(self.atoms[idx]).float()
+        atoms = lex_sort(atoms)
         label = [smiles_dict[s] for s in self.smiles[idx]]
         label = torch.tensor(label, dtype=torch.long)
         if self.one_hot:

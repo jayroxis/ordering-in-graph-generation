@@ -18,7 +18,7 @@ from engine.data import *
 from engine.arguments import *
 from engine.model import *
 
-from utils.helpers import safe_load_yaml
+from utils.helpers import safe_load_yaml, print_args
 
 
 
@@ -29,7 +29,8 @@ def main():
     # Parse Arguments
     arg_parser = ArgumentParserModule()
     args = arg_parser.parse_args()
-
+    print_args(args)
+    
     # Load configuration file
     configs = safe_load_yaml(args.config)
     data_config = configs["data"]
