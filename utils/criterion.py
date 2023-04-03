@@ -153,6 +153,48 @@ def pairwise_cross_entropy(x, y):
     return cross_entropy
 
 
+def undirected_earth_mover_distance(x, y, ord=2):
+    """
+    Earth Mover's Distance between two sets of points.
+    
+    The differece between this EMD and Hungarian distance
+    is that EMD can work with two sets that have different
+    number of points.
+    Args:
+        x: Tensor of shape (B, L, D).
+        y: Tensor of shape (B, L, D).
+
+    Returns:
+        1D Tensor for earth mover distance for undirected graph.
+    """
+    # Compute the cost matrix
+    cost_mat = torch.cdist(x, y, p=ord)
+    
+    # Get the last dimension of the target tensor
+    target_dim = y.shape[-1]
+
+    # Compute the half of the target dimension
+    half_target_dim = int(target_dim // 2)
+
+    # Flip the start and end node of the target graph
+    reversed_target = torch.cat([
+        y[..., half_target_dim:], 
+        y[..., :half_target_dim]
+    ], dim=-1)
+    reversed_cost = torch.cdist(x, reversed_target, p=2)
+    
+    # Cost matrix is the minimum of reversed and original
+    cost_mat = torch.minimum(cost_mat, reversed_cost)
+    
+    # Compute the assignment matrix using linear_sum_assignment
+    row_idx, col_idx = linear_sum_assignment(cost_mat.detach().numpy())
+
+    # Compute the EMD using the assignment matrix and cost matrix
+    emd = torch.mean(cost_mat[row_idx, col_idx])
+    
+    return emd
+
+
 
 # ====================== PyTorch Loss Modules ========================
 
