@@ -11,6 +11,18 @@ from timm.models.registry import register_model
 from scipy.optimize import linear_sum_assignment
 
 
+__all__ = [
+    "pairwise_undirected_graph_distance", 
+    "pairwise_bce_loss_with_logits", 
+    "pairwise_cross_entropy", 
+    "undirected_earth_mover_distance", 
+    "undirected_hausdorff_distance",
+    "CustomCrossEntropyLoss",
+    "UndirectedGraphLoss",
+    "TorchMetricsMulticlass",
+]
+
+
 # ====================== Distance Metrics ========================
 
 def permutation_invariant_errors(x, y, p=2, root=True, pad_value=-1):
@@ -65,6 +77,7 @@ def permutation_invariant_errors(x, y, p=2, root=True, pad_value=-1):
     return errors / N
 
 
+@register_model
 def pairwise_undirected_graph_distance(x, y):
     """
     Computes pairwise undirected graph distance between two sets of vectors x and y.
@@ -98,7 +111,7 @@ def pairwise_undirected_graph_distance(x, y):
     return distance
 
 
-
+@register_model
 def pairwise_bce_loss_with_logits(x, y):
     """
     Computes pairwise BCELossWithLogits between two sets of vectors x and y.
@@ -127,7 +140,7 @@ def pairwise_bce_loss_with_logits(x, y):
     return bce_loss_mean
 
 
-
+@register_model
 def pairwise_cross_entropy(x, y):
     """
     Computes pairwise cross-entropy between two sets of vectors x and y.
@@ -153,6 +166,7 @@ def pairwise_cross_entropy(x, y):
     return cross_entropy
 
 
+@register_model
 def undirected_earth_mover_distance(x, y, ord=2):
     """
     Earth Mover's Distance between two sets of points.
@@ -195,7 +209,7 @@ def undirected_earth_mover_distance(x, y, ord=2):
     return emd
 
 
-
+@register_model
 def undirected_hausdorff_distance(x, y, ord=2):
     """
     Hausdorff Distance between two sets of points for undirected graphs.
