@@ -65,9 +65,10 @@ class LatentSortEncoderMLP(nn.Module):
         orig_shape = tuple(x.shape)
         if x.ndim == 2:
             x = x.unsqueeze(0)
-        latent = self.mlp(x)
-        idx = torch.argsort(latent, dim=1).flatten()
-        x = x[:, idx].reshape(*orig_shape)
+        latent = self.forward(x).squeeze(-1)
+        idx = torch.argsort(latent, dim=1)
+        for n, i in enumerate(idx):
+            x[n] = x[n][i]
         return x
     
     def loss(self, a, b):
@@ -94,13 +95,11 @@ class LatentSortEncoderMLP(nn.Module):
 
         # Loss for making `a` reordering towards `b`
         latent = self.forward(a)
-        latent_idx = torch.argsort(latent, dim=1)
         latent_a = torch.gather(latent, dim=1, index=a_idx)
         loss_a = F.smooth_l1_loss(latent, latent_a)
         
         # Loss for making `b` reordering towards `a`
         latent = self.forward(b)
-        latent_idx = torch.argsort(latent, dim=1)
         latent_b = torch.gather(latent, dim=1, index=b_idx)
         loss_b = F.smooth_l1_loss(latent, latent_b)
         

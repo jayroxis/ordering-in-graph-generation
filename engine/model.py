@@ -234,6 +234,8 @@ class VisionSequenceModel(pl.LightningModule):
         Main training step.
         """
         img, seq = batch
+        if self.use_latent_sort:
+            seq = self.ls_encoder.sort(seq)
         pred = self(img, seq[:, :-1])
         losses = self.calc_loss(
             pred=pred, 
