@@ -67,6 +67,16 @@ class VisionSequenceModel(pl.LightningModule):
             assert is_match, "The number of parameters in `params_group` " + \
                              "do not match the model's parameters."
             # ------------------------------------------------------------------
+        # Set up latent sort encoder
+        if "latent_sort_encoder" in self.model_config:
+            self.ls_config = self.model_config["latent_sort_encoder"]
+            self.ls_encoder = build_model(
+                model_name=self.ls_config['class'],
+                **self.ls_config['params']
+            )
+            self.use_latent_sort = True
+
+        # Build model
         self.model = build_model(
             model_name=self.model_config['class'],
             **self.model_config['params']
@@ -173,6 +183,12 @@ class VisionSequenceModel(pl.LightningModule):
         lr = float(optimizer_params.get("lr", 2e-4))
         weight_decay = float(optimizer_params.get("weight_decay", 0.0))
         params = self.model.get_params_group(lr=lr, weight_decay=weight_decay)
+        if self.use_latent_sort:
+            params.append({
+                "params": self.ls_encoder.parameters(), 
+                "lr": lr, 
+                "weight_decay": weight_decay, 
+            })
         opt, sch = self.build_optimizers_and_schedulers(params)
         optimizers.extend(opt)
         schedulers.extend(sch)
@@ -201,7 +217,12 @@ class VisionSequenceModel(pl.LightningModule):
             weight = items.get("weight", 1.0)
             if weight != 0:
                 total_loss = total_loss + weight * loss
-
+        
+        if self.use_latent_sort:
+            ls_loss = self.ls_encoder.loss(pred, target)
+            total_loss = total_loss + ls_loss
+            stats["ls_loss"] = ls_loss.item()
+            
         # This `loss` will be the loss used for backward
         stats["loss"] = total_loss
         return stats
