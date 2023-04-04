@@ -22,6 +22,7 @@ class LatentSortEncoderMLP(nn.Module):
         hidden_dim=256, 
         num_layers=3,
         norm_out=True,
+        **kwargs,
     ):
         super().__init__()
         
