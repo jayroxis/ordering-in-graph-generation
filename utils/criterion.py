@@ -11,6 +11,18 @@ from timm.models.registry import register_model
 from scipy.optimize import linear_sum_assignment
 
 
+__all__ = [
+    "pairwise_undirected_graph_distance", 
+    "pairwise_bce_loss_with_logits", 
+    "pairwise_cross_entropy", 
+    "undirected_earth_mover_distance", 
+    "undirected_hausdorff_distance",
+    "CustomCrossEntropyLoss",
+    "UndirectedGraphLoss",
+    "TorchMetricsMulticlass",
+]
+
+
 # ====================== Distance Metrics ========================
 
 def permutation_invariant_errors(x, y, p=2, root=True, pad_value=-1):
@@ -65,6 +77,7 @@ def permutation_invariant_errors(x, y, p=2, root=True, pad_value=-1):
     return errors / N
 
 
+@register_model
 def pairwise_undirected_graph_distance(x, y):
     """
     Computes pairwise undirected graph distance between two sets of vectors x and y.
@@ -98,7 +111,7 @@ def pairwise_undirected_graph_distance(x, y):
     return distance
 
 
-
+@register_model
 def pairwise_bce_loss_with_logits(x, y):
     """
     Computes pairwise BCELossWithLogits between two sets of vectors x and y.
@@ -127,7 +140,7 @@ def pairwise_bce_loss_with_logits(x, y):
     return bce_loss_mean
 
 
-
+@register_model
 def pairwise_cross_entropy(x, y):
     """
     Computes pairwise cross-entropy between two sets of vectors x and y.
@@ -151,6 +164,93 @@ def pairwise_cross_entropy(x, y):
     cross_entropy = -(x_softmax * y_log_softmax).sum(dim=-1)  # Pairwise cross-entropy
 
     return cross_entropy
+
+
+@register_model
+def undirected_earth_mover_distance(x, y, ord=2):
+    """
+    Earth Mover's Distance between two sets of points.
+    
+    The differece between this EMD and Hungarian distance
+    is that EMD can work with two sets that have different
+    number of points.
+    Args:
+        x: Tensor of shape (B, L, D).
+        y: Tensor of shape (B, L, D).
+
+    Returns:
+        1D Tensor for earth mover distance for undirected graph.
+    """
+    # Compute the cost matrix
+    cost_mat = torch.cdist(x, y, p=ord)
+    
+    # Get the last dimension of the target tensor
+    target_dim = y.shape[-1]
+
+    # Compute the half of the target dimension
+    half_target_dim = int(target_dim // 2)
+
+    # Flip the start and end node of the target graph
+    reversed_target = torch.cat([
+        y[..., half_target_dim:], 
+        y[..., :half_target_dim]
+    ], dim=-1)
+    reversed_cost = torch.cdist(x, reversed_target, p=2)
+    
+    # Cost matrix is the minimum of reversed and original
+    cost_mat = torch.minimum(cost_mat, reversed_cost)
+    
+    # Compute the assignment matrix using linear_sum_assignment
+    row_idx, col_idx = linear_sum_assignment(cost_mat.detach().numpy())
+
+    # Compute the EMD using the assignment matrix and cost matrix
+    emd = torch.mean(cost_mat[row_idx, col_idx])
+    
+    return emd
+
+
+@register_model
+def undirected_hausdorff_distance(x, y, ord=2):
+    """
+    Hausdorff Distance between two sets of points for undirected graphs.
+    
+    Args:
+        x: Tensor of shape (B, L, D).
+        y: Tensor of shape (B, L, D).
+
+    Returns:
+        1D Tensor for Hausdorff distance for undirected graph.
+    """
+    # Compute the distance matrix
+    distance_mat = torch.cdist(x, y, p=ord)
+
+    # Get the last dimension of the target tensor
+    target_dim = y.shape[-1]
+
+    # Compute the half of the target dimension
+    half_target_dim = int(target_dim // 2)
+
+    # Flip the start and end node of the target graph
+    reversed_target = torch.cat([
+        y[..., half_target_dim:], 
+        y[..., :half_target_dim]
+    ], dim=-1)
+    
+    reversed_distance = torch.cdist(x, reversed_target, p=ord)
+
+    # Distance matrix is the minimum of reversed and original
+    distance_mat = torch.minimum(distance_mat, reversed_distance)
+
+    # Compute the directed Hausdorff distance for the source to target
+    hd_src_to_tgt = torch.max(torch.min(distance_mat, dim=1).values)
+
+    # Compute the directed Hausdorff distance for the target to source
+    hd_tgt_to_src = torch.max(torch.min(distance_mat, dim=0).values)
+
+    # Hausdorff distance is the maximum of hd_src_to_tgt and hd_tgt_to_src
+    hausdorff_distance = torch.max(hd_src_to_tgt, hd_tgt_to_src)
+
+    return hausdorff_distance
 
 
 
