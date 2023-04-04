@@ -196,6 +196,50 @@ def undirected_earth_mover_distance(x, y, ord=2):
 
 
 
+def undirected_hausdorff_distance(x, y, ord=2):
+    """
+    Hausdorff Distance between two sets of points for undirected graphs.
+    
+    Args:
+        x: Tensor of shape (B, L, D).
+        y: Tensor of shape (B, L, D).
+
+    Returns:
+        1D Tensor for Hausdorff distance for undirected graph.
+    """
+    # Compute the distance matrix
+    distance_mat = torch.cdist(x, y, p=ord)
+
+    # Get the last dimension of the target tensor
+    target_dim = y.shape[-1]
+
+    # Compute the half of the target dimension
+    half_target_dim = int(target_dim // 2)
+
+    # Flip the start and end node of the target graph
+    reversed_target = torch.cat([
+        y[..., half_target_dim:], 
+        y[..., :half_target_dim]
+    ], dim=-1)
+    
+    reversed_distance = torch.cdist(x, reversed_target, p=ord)
+
+    # Distance matrix is the minimum of reversed and original
+    distance_mat = torch.minimum(distance_mat, reversed_distance)
+
+    # Compute the directed Hausdorff distance for the source to target
+    hd_src_to_tgt = torch.max(torch.min(distance_mat, dim=1).values)
+
+    # Compute the directed Hausdorff distance for the target to source
+    hd_tgt_to_src = torch.max(torch.min(distance_mat, dim=0).values)
+
+    # Hausdorff distance is the maximum of hd_src_to_tgt and hd_tgt_to_src
+    hausdorff_distance = torch.max(hd_src_to_tgt, hd_tgt_to_src)
+
+    return hausdorff_distance
+
+
+
 # ====================== PyTorch Loss Modules ========================
 
 
