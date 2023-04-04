@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import numpy as np
+from scipy.optimize import linear_sum_assignment
+
 from utils.criterion import *
 
 from timm.models.registry import register_model
@@ -80,12 +83,15 @@ class LatentSortEncoderMLP(nn.Module):
         # Matching using Hungarian algorithm
         a_idx, b_idx = [], []
         for c in cost:
+            c = c.detach().cpu().numpy()
             idx = linear_sum_assignment(c)
             a_idx.append(idx[0])
             b_idx.append(idx[1])
         a_idx = torch.from_numpy(np.stack(a_idx)).unsqueeze(-1)
         b_idx = torch.from_numpy(np.stack(b_idx)).unsqueeze(-1)
-        
+        a_idx = a_idx.to(a.device).long()
+        b_idx = b_idx.to(b.device).long()
+
         # Loss for making `a` reordering towards `b`
         latent = self.forward(a)
         latent_idx = torch.argsort(latent, dim=1)
