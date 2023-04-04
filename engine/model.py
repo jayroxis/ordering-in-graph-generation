@@ -75,6 +75,8 @@ class VisionSequenceModel(pl.LightningModule):
                 **self.ls_config['params']
             )
             self.use_latent_sort = True
+        else:
+            self.use_latent_sort = False
 
         # Build model
         self.model = build_model(
