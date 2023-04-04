@@ -21,7 +21,7 @@ class LatentSortEncoderMLP(nn.Module):
     def __init__(
         self, 
         pairwise_dist,
-        input_dim=16, 
+        input_dim, 
         output_dim=1, 
         hidden_dim=256, 
         num_layers=3,
@@ -106,3 +106,58 @@ class LatentSortEncoderMLP(nn.Module):
         # Symmetric loss design
         loss = loss_a + loss_b
         return loss
+    
+
+
+@register_model
+class LatentSortEncoderTransformer(LatentSortEncoderMLP):
+    """
+    Latent Sort encoder based on Transformer architecture.
+    """
+    def __init__(
+        self, 
+        pairwise_dist,
+        input_dim, 
+        output_dim=1, 
+        hidden_dim=256, 
+        num_layers=3,
+        norm_out=True,
+        nhead=4,
+        **kwargs,
+    ):
+        super(LatentSortEncoderMLP, self).__init__()
+        
+        if type(pairwise_dist) == str:
+            self.pairwise_dist = eval(pairwise_dist)
+        elif type(pairwise_dist) == dict:
+            params = pairwise_dist.get("params", {})
+            self.pairwise_dist = eval(pairwise_dist["class"])(**params)
+        else:
+            self.pairwise_dist = pairwise_dist
+            
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.hidden_dim = hidden_dim
+        self.norm_out = norm_out
+        
+        self.in_proj = nn.Linear(input_dim, hidden_dim)
+        self.out_proj = nn.Linear(hidden_dim, output_dim)
+        self.transformer = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=hidden_dim, 
+                nhead=nhead, 
+                dim_feedforward=2 * hidden_dim, 
+                dropout=0.0, 
+                batch_first=True, 
+                norm_first=False,
+            ),
+            num_layers
+        )
+            
+    def forward(self, x):
+        x = self.in_proj(x)
+        latent = self.transformer(x)
+        latent = self.out_proj(latent)
+        if self.norm_out:
+            latent = (latent - latent.mean()) / (latent.std() + 1e-9)
+        return latent
