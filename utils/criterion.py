@@ -297,7 +297,8 @@ class CustomCrossEntropyLoss(nn.CrossEntropyLoss):
         """
         # Swap the last and target dimension
         input = input.transpose(1, self.dim)
-        target = target.transpose(1, self.dim)
+        if target.ndim == 3:
+            target = target.transpose(1, self.dim)
         
         # Apply the original CrossEntropyLoss function
         loss = super().forward(input, target, *args, **kwargs)
