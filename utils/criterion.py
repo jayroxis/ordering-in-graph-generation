@@ -19,6 +19,7 @@ __all__ = [
     "undirected_hausdorff_distance",
     "CustomCrossEntropyLoss",
     "UndirectedGraphLoss",
+    "ElasticLoss",
     "TorchMetricsMulticlass",
 ]
 
@@ -306,6 +307,22 @@ class CustomCrossEntropyLoss(nn.CrossEntropyLoss):
         return loss
 
 
+@register_model
+class ElasticLoss(nn.Module):
+    """
+    L1 + L2 Loss.
+    """
+    def __init__(self):
+        super(ElasticLoss, self).__init__()
+        
+    def forward(self, pred, target):
+        mse_loss = ((pred - target) ** 2).mean(-1)
+        l1_loss = torch.abs(pred - target).mean(-1)
+        
+        # Compute final loss as the sum of MSE and L1 losses
+        final_loss = mse_loss + l1_loss
+        return final_loss.mean()
+    
 
 @register_model
 class UndirectedGraphLoss(nn.Module):
