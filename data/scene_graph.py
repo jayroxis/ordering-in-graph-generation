@@ -181,7 +181,6 @@ class PSGRelationDataset(BasePSGDataset):
         if type(rels) == tuple or type(rels) == list:
             rels = torch.cat(rels, dim=0)
         rels = rels.data.long()
-        rels = self.sort_func(rels)
 
         # map the segment id to semantic id
         labels = data["gt_labels"]
@@ -205,6 +204,8 @@ class PSGRelationDataset(BasePSGDataset):
                 F.one_hot(rels[..., 1], num_classes=self.obj_cls + 1).float(),
                 F.one_hot(rels[..., 2], num_classes=self.pd_cls + 1).float(), # need to - 1
             ], dim=-1)
+            one_hot_rels = self.sort_func(one_hot_rels)
             return img, one_hot_rels
         else:
+            rels = self.sort_func(rels)
             return img, rels
