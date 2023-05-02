@@ -10,6 +10,7 @@ __all__ = [
 ]
 
 
+# Mean and Std values for normalizing the data
 SIGNAL_MEAN = [-0.0405, -0.0013]
 SIGNAL_STD = [0.1421, 0.1428]
 NODE_MEAN =[6.3346e+01, 9.6438e-04, 7.3591e+01, 6.0000e+00, 6.3395e+01, 4.9361e-02,
