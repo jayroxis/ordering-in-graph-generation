@@ -2,6 +2,7 @@ import pickle
 import json
 import torch
 from torch.utils.data import Dataset
+from .misc import *
 
 
 class CircuitSignalToRawFeaturesDataset(Dataset):
@@ -11,6 +12,7 @@ class CircuitSignalToRawFeaturesDataset(Dataset):
             input_dim=2,
             output_dim=9,
             max_num_nodes=6,
+            sort_func="no_sort",
             *args, **kwargs
         ):
         """
@@ -24,8 +26,15 @@ class CircuitSignalToRawFeaturesDataset(Dataset):
             self.data = pickle.load(open(data_file, 'rb'))
         elif data_file.endswith('.json'):
             self.data = json.load(open(data_file, 'r'))
-        self.input_dim=128
-        self.output_dim=9
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.max_num_nodes = max_num_nodes
+
+        if type(sort_func) == str:
+            sort_func = eval(sort_func)
+        elif type(sort_func) == dict:
+            sort_func = eval(sort_func["class"])(**sort_func["params"])
+        self.sort_func = sort_func
         
     def __len__(self):
         return len(self.data)
