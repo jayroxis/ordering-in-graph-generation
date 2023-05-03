@@ -19,6 +19,7 @@ class ToulouseRoadNetworkDataset(Dataset):
             img_size=64,
             train=False,
             sort_func="dfs_sort",
+            remove_artificial_edges=True,
             *args, **kwargs
         ):
         super().__init__(*args, **kwargs)
@@ -60,7 +61,17 @@ class ToulouseRoadNetworkDataset(Dataset):
                 self.img_data[k], self.label[k]['dfs_edges']
             ) for k in self.img_data.keys()]
             self.sort_func = sort_func
-        
+
+        # remove the edges added during BFS or DFS
+        self.remove_artificial_edges = remove_artificial_edges
+
+    def _remove_artificial_edges(self, seq):
+        mask1 = (seq[..., :2] == 0.5).all(-1)
+        mask2 = (seq[..., 2:] == 0.5).all(-1)
+        mask = torch.logical_or(mask1, mask2)
+        mask = torch.logical_not(mask)
+        return seq[mask]
+
     def __len__(self):
         return len(self.data)
 
@@ -78,5 +89,7 @@ class ToulouseRoadNetworkDataset(Dataset):
             seq[:, 2] = -seq[:, 2]
         img = self.transform((img + 1) / 2)
         seq = ((seq + 1) / 2)
+        if self.remove_artificial_edges:
+            seq = self._remove_artificial_edges(seq)
         seq = self.sort_func(seq)
         return img, seq
