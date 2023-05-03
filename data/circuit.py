@@ -68,4 +68,5 @@ class CircuitSignalToRawFeaturesDataset(Dataset):
         node_attributes = data_dict['node_attributes']
         node_attributes = self.sort_func(node_attributes)
         node_attributes = (node_attributes - self.node_mean) / self.node_std
+        node_attributes = self.sort_func(node_attributes)
         return signal, node_attributes
