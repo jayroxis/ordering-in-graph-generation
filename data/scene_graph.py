@@ -6,6 +6,7 @@
 #   PSG Challenge: https://github.com/Jingkang50/OpenPSG
 
 
+import json
 import torch
 import torch.nn.functional as F
 from torchvision.transforms import Resize
@@ -15,6 +16,10 @@ from data.openpsg import PanopticSceneGraphDataset
 from .misc import *
 from timm.models.registry import register_model
 
+
+__all__ = [
+    "PSGRelationDataset", "PSGTRDataset",
+]
 
 
 class BasePSGDataset(torch.utils.data.Dataset):
@@ -197,6 +202,52 @@ class PSGRelationDataset(BasePSGDataset):
         # remove duplicates for semantic graphs
         rels = torch.unique(rels, dim=0).long()
     
+        # one-hot encoding
+        if self.one_hot:
+            one_hot_rels = torch.cat([
+                F.one_hot(rels[..., 0], num_classes=self.obj_cls + 1).float(),
+                F.one_hot(rels[..., 1], num_classes=self.obj_cls + 1).float(),
+                F.one_hot(rels[..., 2], num_classes=self.pd_cls + 1).float(), # need to - 1
+            ], dim=-1)
+            one_hot_rels = self.sort_func(one_hot_rels)
+            return img, one_hot_rels
+        else:
+            rels = self.sort_func(rels)
+            return img, rels
+        
+
+
+
+@register_model
+class PSGTRDataset(PSGRelationDataset):
+    """
+    This dataset uses PSGTR's output scene graph relations as training labels.
+
+    Returns:
+        - 4D `img` of shape (B, C, W, H).
+        - One-hot encoded relational triple-lets of shape (B, L, 3).
+            The relational triple-lets are (Object, Predicate, Object)
+    """
+    def __init__(self, relation_file, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.relation_file = relation_file
+        with open(relation_file, 'r') as f:
+            self.relations = json.load(f)
+
+    def __getitem__(self, idx):
+        data = self.dataset.__getitem__(idx)
+        
+        # load image
+        img = data["img"]
+        if type(img) == tuple or type(img) == list:
+            img = torch.cat(img, dim=0)
+        img = img.data.float()
+        img = self.resize(img)
+
+        filename = data['img_metas'][0].data['ori_filename']
+        assert self.relations[idx]['filename'] == filename
+        rels = torch.tensor(self.relations[idx]['relations']).long()
+        
         # one-hot encoding
         if self.one_hot:
             one_hot_rels = torch.cat([
