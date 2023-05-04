@@ -22,6 +22,10 @@ All trainings now are in 32-bit for better training stability. Use AMP (Auto-Mix
 
 ## Datasets
 
+
+### Topological Graph Generation From Visual Inputs
+
+
 **Toulouse Road Network Dataset**: [Road_Network](https://github.com/davide-belli/generative-graph-transformer).
 
 ***Description***: The Toulouse Road Network dataset is a collection of road maps from the city of Toulouse, represented both as graphs and grayscale segmentation images, and is used to benchmark the Generative Graph Transformer, with its creation involving multiple steps of preprocessing, filtering, data augmentation, and graph representation.
@@ -35,7 +39,6 @@ All trainings now are in 32-bit for better training stability. Use AMP (Auto-Mix
 }
 ```
 
-### Topological Graph Generation From Visual Inputs
 **Image to Topological Graph** (Proposed in This Work): [Planar_Graph](data/planar_graph.py).
 
 ***Description***: This is a synthetic dataset used in this paper for learning a 2D topoligical planar graph from its rendered image. Models are expected to predict not only the graph connectivity but also the node coordinates.
