@@ -233,6 +233,9 @@ class PSGTRDataset(PSGRelationDataset):
         self.relation_file = relation_file
         with open(relation_file, 'r') as f:
             self.relations = json.load(f)
+        self.relations = {
+            item['filename']: item['relations'] for item in self.relations
+        }
 
     def __getitem__(self, idx):
         data = self.dataset.__getitem__(idx)
@@ -244,11 +247,13 @@ class PSGTRDataset(PSGRelationDataset):
         img = img.data.float()
         img = self.resize(img)
 
-        filename = data['img_metas'].data['ori_filename']
-        assert self.relations[idx]['filename'] == filename, \
-            f"{filename} not match with {self.relations[idx]['filename']}"
-        rels = torch.tensor(self.relations[idx]['relations']).long()
-        
+        img_metas = data['img_metas']
+        if type(img_metas) == list:
+            img_metas = img_metas[0]
+        filename = img_metas.data['ori_filename']
+        rels = torch.tensor(self.relations[filename]).long()
+        rels = torch.unique(rels, dim=0)
+
         # one-hot encoding
         if self.one_hot:
             one_hot_rels = torch.cat([

@@ -14,8 +14,13 @@ A minimal implementation of GraphGPT for Vision-Graph generation.
 - https://github.com/Lightning-AI/lightning/issues/525#issuecomment-596963253
 
 ## Commands
+To submitting jobs under a folder `path/folder/`:
+```bash
+for file in path/folder/*.sh; do sbatch $file; done
+```
+
 To monitor jobs on ARC: 
-```cmd
+```bash
 watch -n1 "squeue -u jayroxis --format=\"%.10i %.10P %.30j %.8u %.8T %.8M %.10l %12R\""
 ```
 All trainings now are in 32-bit for better training stability. Use AMP (Auto-Mixed Precision) might cause training instability, but it might be resolved using some training techniques.
