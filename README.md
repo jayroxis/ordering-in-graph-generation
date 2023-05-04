@@ -1,6 +1,18 @@
 # GraphGPT
 A minimal implementation of GraphGPT for Vision-Graph generation.
 
+# Note On PyTorch Lightning Environment
+- **Do NOT use FP16 on PyTorch Lightning**, it may cause buggy checkpoint behavior. As we notice, it can cause a known bug that could lead to very poor model performance.
+- Though this paper's results are produced using the pipeline under PyTorch Lightning 1.8.0, Ubuntu LTS 20.0.4 and Python 3.10, we observed that some systems and environments may have some major problems that the validation accuracy are significantly lower. Yet it is still unpredictable what are the environments that may cause this issue from PyTorch Lightning. If you want to use the model, we highly recommend you to implement a version without using PyTorch Lightning.
+
+**References To The Issues:** 
+- https://github.com/Lightning-AI/lightning/issues/6159
+- https://github.com/Lightning-AI/lightning/issues/924
+- https://github.com/Lightning-AI/lightning/issues/4045
+
+**Information About The Apex FP16 Bug:**
+- https://github.com/Lightning-AI/lightning/issues/525#issuecomment-596963253
+
 ## Commands
 To monitor jobs on ARC: 
 ```cmd
@@ -28,30 +40,6 @@ All trainings now are in 32-bit for better training stability. Use AMP (Auto-Mix
     booktitle = {ECCV}
     year = {2022}
 }
-```
-
-### Molecule Dataset For Molecule Structure Prediction
-**Molecular Sets** (Based on ZINC): [MOSES](https://graphgt.github.io/molecule.html).
-
-***Description***: Molecular Sets (MOSES) is a benchmark platform for distribution learning based molecule generation. Within this benchmark, MOSES provides a cleaned dataset of molecules that are ideal of optimization. It is processed from the ZINC Clean Leads dataset.
-
-***Acknowledgement:***
-```bibtex
-@article{polykovskiy2020molecular,
-    title={Molecular sets (MOSES): a benchmarking platform for molecular generation models},
-    author={Polykovskiy, Daniil and Zhebrak, Alexander and Sanchez-Lengeling, Benjamin and Golovanov, Sergey and Tatanov, Oktai and Belyaev, Sergey and Kurbanov, Ruslan and Artamonov, Andrew and Aladinskiy, Vladimir and Veselov, Mark and others},
-    journal={Frontiers in pharmacology},
-    volume={11},
-    year={2020},
-    publisher={Frontiers Media SA}
-}
-
-@inproceedings{du2021graphgt,
-    title={GraphGT: Machine Learning Datasets for Graph Generation and Transformation},
-    author={Du, Yuanqi and Wang, Shiyu and Guo, Xiaojie and Cao, Hengning and Hu, Shujie and Jiang, Junji and Varala, Aishwarya and Angirekula, Abhinav and Zhao, Liang},
-    booktitle={NeurIPS 2021},
-    year={2021}
-} 
 ```
 
 ### Circuit Graph For Automatic EDA
