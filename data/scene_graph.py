@@ -244,7 +244,7 @@ class PSGTRDataset(PSGRelationDataset):
         img = img.data.float()
         img = self.resize(img)
 
-        filename = data['img_metas'][0].data['ori_filename']
+        filename = data['img_metas'].data['ori_filename']
         assert self.relations[idx]['filename'] == filename, \
             f"{filename} not match with {self.relations[idx]['filename']}"
         rels = torch.tensor(self.relations[idx]['relations']).long()

@@ -11,12 +11,12 @@ __all__ = [
 
 
 # Mean and Std values for normalizing the data
-SIGNAL_MEAN = [-0.0405, -0.0013]
-SIGNAL_STD = [0.1421, 0.1428]
-NODE_MEAN =[6.3346e+01, 9.6438e-04, 7.3591e+01, 6.0000e+00, 6.3395e+01, 4.9361e-02,
-        4.5948e+00, 4.5912e+00, 4.9970e-01]
-NODE_STD = [59.2894, 55.0359, 14.3586,  1.0e-8, 65.1669, 61.3278,  2.2104,  2.2103,
-         0.2889]
+SIGNAL_MIN = [-0.8909, -0.7992]
+SIGNAL_MAX = [0.7910, 0.8415]
+NODE_MIN = [0.0000, -197.9330,   50.0000,    6.0000,  -46.9990, -241.2470,
+           2.4000,    2.4000,    0.0000]
+NODE_MAX =[6.3346e+01, 9.6438e-04, 7.3591e+01, 6.0000, 6.3395e+01, 4.9361e-02,
+        4.5948, 4.5912, 4.9970e-01]
 
 
 class CircuitSignalToRawFeaturesDataset(Dataset):
@@ -26,10 +26,10 @@ class CircuitSignalToRawFeaturesDataset(Dataset):
             input_dim: int=2,
             output_dim: int=9,
             max_num_nodes: int=6,
-            signal_mean=SIGNAL_MEAN,
-            signal_std=SIGNAL_STD,
-            node_mean=NODE_MEAN,
-            node_std=NODE_STD,
+            signal_min=SIGNAL_MIN,
+            signal_max=SIGNAL_MAX,
+            node_min=NODE_MIN,
+            node_max=NODE_MAX,
             sort_func="no_sort",
             *args, **kwargs
         ):
@@ -53,10 +53,10 @@ class CircuitSignalToRawFeaturesDataset(Dataset):
         elif type(sort_func) == dict:
             sort_func = eval(sort_func["class"])(**sort_func["params"])
         self.sort_func = sort_func
-        self.signal_mean = torch.tensor(signal_mean, dtype=torch.float32).unsqueeze(0)
-        self.signal_std = torch.tensor(signal_std, dtype=torch.float32).unsqueeze(0)
-        self.node_mean = torch.tensor(node_mean, dtype=torch.float32).unsqueeze(0)
-        self.node_std = torch.tensor(node_std, dtype=torch.float32).unsqueeze(0)
+        self.signal_min = torch.tensor(signal_min, dtype=torch.float32).unsqueeze(0)
+        self.signal_max = torch.tensor(signal_max, dtype=torch.float32).unsqueeze(0)
+        self.node_min = torch.tensor(node_min, dtype=torch.float32).unsqueeze(0)
+        self.node_max = torch.tensor(node_max, dtype=torch.float32).unsqueeze(0)
 
     def __len__(self):
         return len(self.data)
@@ -64,9 +64,9 @@ class CircuitSignalToRawFeaturesDataset(Dataset):
     def __getitem__(self, i):
         data_dict = self.data[i]
         signal = data_dict['signal']
-        signal = (signal - self.signal_mean) / self.signal_std
+        signal = (signal - self.signal_min) / (self.signal_max - self.signal_min + 1e-8)
         node_attributes = data_dict['node_attributes']
         node_attributes = self.sort_func(node_attributes)
-        node_attributes = (node_attributes - self.node_mean) / self.node_std
+        node_attributes = (node_attributes - self.node_min) / (self.node_max - self.node_min + 1e-8)
         node_attributes = self.sort_func(node_attributes)
         return signal, node_attributes
