@@ -135,48 +135,6 @@ training:
         metric: torchmetrics.classification.MulticlassAccuracy
         num_classes: 57
       index: 268:325
-    # obj_1_f1_score:
-    #   class: TorchMetricsMulticlass
-    #   weight: 0.0
-    #   params:
-    #     metric: torchmetrics.classification.MulticlassF1Score
-    #     num_classes: 134
-    #   index: 0:134
-    # obj_2_f1_score: 
-    #   class: TorchMetricsMulticlass
-    #   weight: 0.0
-    #   params:
-    #     metric: torchmetrics.classification.MulticlassF1Score
-    #     num_classes: 134
-    #   index: 134:268
-    # predicate_f1_score:
-    #   class: TorchMetricsMulticlass
-    #   weight: 0.0
-    #   params:
-    #     metric: torchmetrics.classification.MulticlassF1Score
-    #     num_classes: 57
-    #   index: 268:325
-    # obj_1_auroc:
-    #   class: TorchMetricsMulticlass
-    #   weight: 0.0
-    #   params:
-    #     metric: torchmetrics.classification.MulticlassAUROC
-    #     num_classes: 134
-    #   index: 0:134
-    # obj_2_auroc: 
-    #   class: TorchMetricsMulticlass
-    #   weight: 0.0
-    #   params:
-    #     metric: torchmetrics.classification.MulticlassAUROC
-    #     num_classes: 134
-    #   index: 134:268
-    # predicate_auroc:
-    #   class: TorchMetricsMulticlass
-    #   weight: 0.0
-    #   params:
-    #     metric: torchmetrics.classification.MulticlassAUROC
-    #     num_classes: 57
-    #   index: 268:325
 
   # ------------------- Evaluation Metrics -----------------------
   eval_metrics:
@@ -216,45 +174,3 @@ training:
         metric: torchmetrics.classification.MulticlassAccuracy
         num_classes: 57
       index: 268:325
-    # obj_1_f1_score:
-    #   class: TorchMetricsMulticlass
-    #   weight: 0.0
-    #   params:
-    #     metric: torchmetrics.classification.MulticlassF1Score
-    #     num_classes: 134
-    #   index: 0:134
-    # obj_2_f1_score: 
-    #   class: TorchMetricsMulticlass
-    #   weight: 0.0
-    #   params:
-    #     metric: torchmetrics.classification.MulticlassF1Score
-    #     num_classes: 134
-    #   index: 134:268
-    # predicate_f1_score:
-    #   class: TorchMetricsMulticlass
-    #   weight: 0.0
-    #   params:
-    #     metric: torchmetrics.classification.MulticlassF1Score
-    #     num_classes: 57
-    #   index: 268:325
-    # obj_1_auroc:
-    #   class: TorchMetricsMulticlass
-    #   weight: 0.0
-    #   params:
-    #     metric: torchmetrics.classification.MulticlassAUROC
-    #     num_classes: 134
-    #   index: 0:134
-    # obj_2_auroc: 
-    #   class: TorchMetricsMulticlass
-    #   weight: 0.0
-    #   params:
-    #     metric: torchmetrics.classification.MulticlassAUROC
-    #     num_classes: 134
-    #   index: 134:268
-    # predicate_auroc:
-    #   class: TorchMetricsMulticlass
-    #   weight: 0.0
-    #   params:
-    #     metric: torchmetrics.classification.MulticlassAUROC
-    #     num_classes: 57
-    #   index: 268:325
