@@ -1,9 +1,9 @@
 # GraphGPT
 A minimal implementation of GraphGPT for Vision-Graph generation.
 
-# Note On PyTorch Lightning Environment
+## Note On PyTorch Lightning Environment
 - **Do NOT use FP16 on PyTorch Lightning**, it may cause buggy checkpoint behavior. As we notice, it can cause a known bug that could lead to very poor model performance.
-- Though this paper's results are produced using the pipeline under PyTorch Lightning 1.8.0, Ubuntu LTS 20.0.4 and Python 3.10, we observed that some systems and environments may have some major problems that the validation accuracy are significantly lower. Yet it is still unpredictable what are the environments that may cause this issue from PyTorch Lightning. If you want to use the model, we highly recommend you to implement a version without using PyTorch Lightning.
+- Though this paper's results were produced using the pipeline with PyTorch Lightning 1.8.0, Ubuntu LTS 20.0.4 and Python 3.10, we observed that some systems and environments may have some major problems that the validation accuracy are significantly lower. Yet it is still unpredictable what are the environments that may cause this issue from PyTorch Lightning. If you want to use the model, we highly recommend you to implement a version without using PyTorch Lightning.
 
 **References To The Issues:** 
 - https://github.com/Lightning-AI/lightning/issues/6159
@@ -21,6 +21,19 @@ watch -n1 "squeue -u jayroxis --format=\"%.10i %.10P %.30j %.8u %.8T %.8M %.10l 
 All trainings now are in 32-bit for better training stability. Use AMP (Auto-Mixed Precision) might cause training instability, but it might be resolved using some training techniques.
 
 ## Datasets
+
+**Toulouse Road Network Dataset**: [Road_Network](https://github.com/davide-belli/generative-graph-transformer).
+
+***Description***: The Toulouse Road Network dataset is a collection of road maps from the city of Toulouse, represented both as graphs and grayscale segmentation images, and is used to benchmark the Generative Graph Transformer, with its creation involving multiple steps of preprocessing, filtering, data augmentation, and graph representation.
+
+```bibtex
+@article{belli2019image,
+  title={Image-conditioned graph generation for road network extraction},
+  author={Belli, Davide and Kipf, Thomas},
+  journal={arXiv preprint arXiv:1910.14388},
+  year={2019}
+}
+```
 
 ### Topological Graph Generation From Visual Inputs
 **Image to Topological Graph** (Proposed in This Work): [Planar_Graph](data/planar_graph.py).
@@ -86,6 +99,3 @@ The Binary-CE loss, as shown in [ResNet Strikes Back [1]](https://arxiv.org/abs/
   eprint={2006.07159}
 }
 ```
-### Other Possible Improvements:
-
-BlurPool, EMA, FixRes, [Label Smoothing](https://arxiv.org/abs/1512.00567): https://arxiv.org/pdf/1906.02629.pdf, and Progressive Image Resizing; it also uses the FFCV dataloader and Channels Last memory format.
