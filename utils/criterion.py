@@ -1,7 +1,4 @@
 
-
-
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,8 +7,14 @@ import torchmetrics
 from timm.models.registry import register_model
 from scipy.optimize import linear_sum_assignment
 
+import numpy as np
+import networkx as nx
+from .helpers import unpad_node_pairs, create_graph
+from utils.streetmover_distance import StreetMoverDistance
+
 
 __all__ = [
+    "get_street_mover_distance",
     "pairwise_undirected_graph_distance", 
     "pairwise_bce_loss_with_logits", 
     "pairwise_cross_entropy", 
@@ -644,3 +647,42 @@ class DimensionwiseHybridLoss(nn.Module):
         return repr_str
 
 
+
+def get_street_mover_distance(
+    pred, target, 
+    padding_value=-1.0,
+    padding_threshold=0.8,
+    merge_threshold=0.08,
+    eps=1e-6, 
+    max_iter=20
+):
+    unpadded_gt = unpad_node_pairs(
+        target.detach().cpu().numpy(),
+        padding_value=padding_value, error=padding_threshold,
+    )
+    unpadded_pred = unpad_node_pairs(
+        pred.detach().cpu().numpy(),
+        padding_value=padding_value, error=padding_threshold,
+    )
+    G_gt = create_graph(unpadded_gt, threshold=merge_threshold)
+    G_pred = create_graph(unpadded_pred, threshold=merge_threshold)
+
+    gt_nodes = np.array([G_gt.nodes[n]['pos'] for n in G_gt])
+    pred_nodes = np.array([G_pred.nodes[n]['pos'] for n in G_pred])
+    adj_gt = nx.adjacency_matrix(G_gt).todense()
+    adj_pred = nx.adjacency_matrix(G_pred).todense()
+    gt_nodes = torch.from_numpy(gt_nodes)
+    pred_nodes = torch.from_numpy(pred_nodes)
+    adj_gt = torch.from_numpy(adj_gt)
+    adj_pred = torch.from_numpy(adj_pred)
+
+    streetmover_distance = StreetMoverDistance(eps=eps, max_iter=max_iter)
+
+    dist = streetmover_distance(
+        adj_gt, 
+        gt_nodes, 
+        adj_pred, 
+        pred_nodes, 
+        n_points=100
+    )[1][0]
+    return dist
