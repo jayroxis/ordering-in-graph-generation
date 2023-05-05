@@ -267,7 +267,7 @@ class PSGTRDataset(PSGRelationDataset):
             one_hot_rels = torch.zeros(len(rels), num_classes)
             one_hot_rels = one_hot_rels.scatter_(
                 1, 
-                rels + torch.tensor([0, self.obj_cls + 1, self.obj_cls + 2]), 
+                rels + torch.tensor([0, self.obj_cls + 1, 2 * self.obj_cls + 2]), 
                 torch.ones_like(one_hot_rels)
             )
             return img, one_hot_rels
