@@ -262,10 +262,10 @@ class PSGTRDataset(PSGRelationDataset):
             #     F.one_hot(rels[..., 2], num_classes=self.pd_cls + 1).float(), # need to - 1
             # ], dim=-1)
             # one_hot_rels = self.sort_func(one_hot_rels)
-            
+
             num_classes = 2 * self.obj_cls + self.pd_cls + 3
             one_hot_rels = torch.zeros(len(rels), num_classes)
-            one_hot_rels = rels.scatter_(
+            one_hot_rels = one_hot_rels.scatter_(
                 1, 
                 rels + torch.tensor([0, self.obj_cls + 1, self.obj_cls + 2]), 
                 torch.ones_like(one_hot_rels)
