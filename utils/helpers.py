@@ -198,7 +198,6 @@ def create_graph(node_pair, threshold=0.01):
     return G
 
 
-
 def draw_graph(G, save_path=None, margin=0.1):
     """
     Draws a networkx graph using matplotlib or saves to file if save_path is specified.
@@ -218,11 +217,7 @@ def draw_graph(G, save_path=None, margin=0.1):
     ax.set_xlim([- margin, 1 + margin])
     ax.set_ylim([- margin, 1 + margin])
 
-    # Save or show the plot
-    if save_path is not None:
-        plt.savefig(save_path)
-    else:
-        plt.show()
+    return fig
 
         
 def plot_graph(node_pair, save_path=None, threshold=0.01):
@@ -240,8 +235,7 @@ def plot_graph(node_pair, save_path=None, threshold=0.01):
         save_path (string): the path to save the plot to as a file (default is None)
     """
     G = create_graph(node_pair, threshold=threshold)
-    draw_graph(G, save_path=save_path)
-
+    return draw_graph(G, save_path=save_path)
 
 
 def plot_graph_strict(node_pair, save_path=None):
