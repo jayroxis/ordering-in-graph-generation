@@ -256,12 +256,20 @@ class PSGTRDataset(PSGRelationDataset):
 
         # one-hot encoding
         if self.one_hot:
-            one_hot_rels = torch.cat([
-                F.one_hot(rels[..., 0], num_classes=self.obj_cls + 1).float(),
-                F.one_hot(rels[..., 1], num_classes=self.obj_cls + 1).float(),
-                F.one_hot(rels[..., 2], num_classes=self.pd_cls + 1).float(), # need to - 1
-            ], dim=-1)
-            one_hot_rels = self.sort_func(one_hot_rels)
+            # one_hot_rels = torch.cat([
+            #     F.one_hot(rels[..., 0], num_classes=self.obj_cls + 1).float(),
+            #     F.one_hot(rels[..., 1], num_classes=self.obj_cls + 1).float(),
+            #     F.one_hot(rels[..., 2], num_classes=self.pd_cls + 1).float(), # need to - 1
+            # ], dim=-1)
+            # one_hot_rels = self.sort_func(one_hot_rels)
+            
+            num_classes = 2 * self.obj_cls + self.pd_cls + 3
+            one_hot_rels = torch.zeros(len(rels), num_classes)
+            one_hot_rels = rels.scatter_(
+                1, 
+                rels + torch.tensor([0, self.obj_cls + 1, self.obj_cls + 2]), 
+                torch.ones_like(one_hot_rels)
+            )
             return img, one_hot_rels
         else:
             rels = self.sort_func(rels)
