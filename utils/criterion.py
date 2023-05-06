@@ -172,9 +172,36 @@ def pairwise_cross_entropy(x, y):
 
 
 @register_model
-def undirected_earth_mover_distance(x, y, ord=2):
+def earth_mover_distance(x, y, ord=2):
     """
     Earth Mover's Distance between two sets of points.
+    
+    The differece between this EMD and Hungarian distance
+    is that EMD can work with two sets that have different
+    number of points.
+    Args:
+        x: Tensor of shape (B, L, D).
+        y: Tensor of shape (B, L, D).
+
+    Returns:
+        1D Tensor for earth mover distance for undirected graph.
+    """
+    # Compute the cost matrix
+    cost_mat = torch.cdist(x, y, p=ord)
+    
+    # Compute the assignment matrix using linear_sum_assignment
+    row_idx, col_idx = linear_sum_assignment(cost_mat.detach().numpy())
+
+    # Compute the EMD using the assignment matrix and cost matrix
+    emd = torch.mean(cost_mat[row_idx, col_idx])
+    
+    return emd
+
+
+@register_model
+def undirected_earth_mover_distance(x, y, ord=2):
+    """
+    Earth Mover's Distance between two undirected graphs.
     
     The differece between this EMD and Hungarian distance
     is that EMD can work with two sets that have different
