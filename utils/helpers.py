@@ -119,8 +119,12 @@ def unpad_node_pairs(node_pair, padding_value=-1.0, error=0.1):
     # Find the index of the last row that does not contain padding values
     last_nonpadding_row = 0
     for i in range(node_pair.shape[0]):
-        if np.all(np.abs(node_pair[i, 2:] - padding_value) > error):
-            last_nonpadding_row = i
+        if isinstance(node_pair, torch.Tensor):
+            if ((node_pair[i, 2:] - padding_value).abs() > error).all():
+                last_nonpadding_row = i
+        else:
+            if np.all(np.abs(node_pair[i, 2:] - padding_value) > error):
+                last_nonpadding_row = i
 
     # Truncate the tensor to remove the padding values
     node_pair = node_pair[:last_nonpadding_row+1, :]
