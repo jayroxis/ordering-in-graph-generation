@@ -188,7 +188,7 @@ def earth_mover_distance(x, y, ord=2):
         1D Tensor for earth mover distance for undirected graph.
     """
     # Compute the cost matrix
-    cost_mat = torch.cdist(x, y, p=ord)
+    cost_mat = torch.cdist(x, y, p=ord) / x.shape[-1]
     
     # Compute the assignment matrix using linear_sum_assignment
     row_idx, col_idx = linear_sum_assignment(cost_mat.detach().numpy())

@@ -50,7 +50,7 @@ def main():
     # Set up the checkpoint callback
     callbacks = [ModelCheckpoint(
         dirpath=save_dir, 
-        save_last=True,
+        save_last=False,
     )]
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)

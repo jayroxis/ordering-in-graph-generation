@@ -96,7 +96,7 @@ def shuffle_tensor(x: torch.Tensor, dim: int = 0) -> torch.Tensor:
 
 
 
-def unpad_node_pairs(node_pair, padding_value=-1.0, error=0.1):
+def unpad_node_pairs(node_pair, padding_value=-1.0, threshold=0.1):
     """
     Truncates the padding values at the end of the node_pair tensor.
     Args:
@@ -110,26 +110,20 @@ def unpad_node_pairs(node_pair, padding_value=-1.0, error=0.1):
             which should be truncated from the tensor before plotting the graph.
         padding_value: a float value between -1 and 1, representing the minimum value
             for a dimension to be considered as padding. Default is -1.0.
-        error: a float value representing the maximum absolute difference between
+        threshold: a float value representing the maximum absolute difference between
             a dimension value and the padding_value value for the dimension to be
             considered as padding. Default is 0.1.
     Returns:
         A new tensor with the padding values truncated from the end.
     """
     # Find the index of the last row that does not contain padding values
-    last_nonpadding_row = 0
-    for i in range(node_pair.shape[0]):
-        if isinstance(node_pair, torch.Tensor):
-            if ((node_pair[i, 2:] - padding_value).abs() > error).all():
-                last_nonpadding_row = i
-        else:
-            if np.all(np.abs(node_pair[i, 2:] - padding_value) > error):
-                last_nonpadding_row = i
 
-    # Truncate the tensor to remove the padding values
-    node_pair = node_pair[:last_nonpadding_row+1, :]
-
-    return node_pair
+    if isinstance(node_pair, torch.Tensor):
+        mask = ((node_pair - padding_value).abs() > threshold).all(-1)
+        return node_pair[mask]
+    else:
+        mask = (np.absolute(node_pair - padding_value) > threshold).all(-1)
+        return node_pair[mask]
 
 
 
