@@ -215,7 +215,7 @@ def undirected_earth_mover_distance(x, y, ord=2):
         1D Tensor for earth mover distance for undirected graph.
     """
     # Compute the cost matrix
-    cost_mat = torch.cdist(x, y, p=ord)
+    cost_mat = torch.cdist(x, y, p=ord) / x.shape[-1]
     
     # Get the last dimension of the target tensor
     target_dim = y.shape[-1]
@@ -228,7 +228,7 @@ def undirected_earth_mover_distance(x, y, ord=2):
         y[..., half_target_dim:], 
         y[..., :half_target_dim]
     ], dim=-1)
-    reversed_cost = torch.cdist(x, reversed_target, p=2)
+    reversed_cost = torch.cdist(x, reversed_target, p=2) / x.shape[-1]
     
     # Cost matrix is the minimum of reversed and original
     cost_mat = torch.minimum(cost_mat, reversed_cost)
@@ -255,7 +255,7 @@ def undirected_hausdorff_distance(x, y, ord=2):
         1D Tensor for Hausdorff distance for undirected graph.
     """
     # Compute the distance matrix
-    distance_mat = torch.cdist(x, y, p=ord)
+    distance_mat = torch.cdist(x, y, p=ord) / x.shape[-1]
 
     # Get the last dimension of the target tensor
     target_dim = y.shape[-1]
@@ -269,7 +269,7 @@ def undirected_hausdorff_distance(x, y, ord=2):
         y[..., :half_target_dim]
     ], dim=-1)
     
-    reversed_distance = torch.cdist(x, reversed_target, p=ord)
+    reversed_distance = torch.cdist(x, reversed_target, p=ord) / x.shape[-1]
 
     # Distance matrix is the minimum of reversed and original
     distance_mat = torch.minimum(distance_mat, reversed_distance)
@@ -286,6 +286,7 @@ def undirected_hausdorff_distance(x, y, ord=2):
     return hausdorff_distance
 
 
+@register_model
 def get_street_mover_distance(
     pred, target, 
     padding_value=-1.0,
