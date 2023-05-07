@@ -286,6 +286,45 @@ def undirected_hausdorff_distance(x, y, ord=2):
     return hausdorff_distance
 
 
+def get_street_mover_distance(
+    pred, target, 
+    padding_value=-1.0,
+    padding_threshold=0.8,
+    merge_threshold=0.08,
+    eps=1e-6, 
+    max_iter=20
+):
+    unpadded_gt = unpad_node_pairs(
+        target.detach().cpu().numpy(),
+        padding_value=padding_value, threshold=padding_threshold,
+    )
+    unpadded_pred = unpad_node_pairs(
+        pred.detach().cpu().numpy(),
+        padding_value=padding_value, threshold=padding_threshold,
+    )
+    G_gt = create_graph(unpadded_gt, threshold=merge_threshold)
+    G_pred = create_graph(unpadded_pred, threshold=merge_threshold)
+
+    gt_nodes = np.array([G_gt.nodes[n]['pos'] for n in G_gt])
+    pred_nodes = np.array([G_pred.nodes[n]['pos'] for n in G_pred])
+    adj_gt = nx.adjacency_matrix(G_gt).todense()
+    adj_pred = nx.adjacency_matrix(G_pred).todense()
+    gt_nodes = torch.from_numpy(gt_nodes)
+    pred_nodes = torch.from_numpy(pred_nodes)
+    adj_gt = torch.from_numpy(adj_gt)
+    adj_pred = torch.from_numpy(adj_pred)
+
+    streetmover_distance = StreetMoverDistance(eps=eps, max_iter=max_iter)
+
+    dist = streetmover_distance(
+        adj_gt, 
+        gt_nodes, 
+        adj_pred, 
+        pred_nodes, 
+        n_points=100
+    )[1][0]
+    return dist
+
 
 # ====================== PyTorch Loss Modules ========================
 
@@ -673,44 +712,3 @@ class DimensionwiseHybridLoss(nn.Module):
         for row in table:
             repr_str += f"{row[0]:^6} {row[1]:^35} {row[2]:^7} {row[3]:^12} {row[4]:^10}\n"
         return repr_str
-
-
-
-def get_street_mover_distance(
-    pred, target, 
-    padding_value=-1.0,
-    padding_threshold=0.8,
-    merge_threshold=0.08,
-    eps=1e-6, 
-    max_iter=20
-):
-    unpadded_gt = unpad_node_pairs(
-        target.detach().cpu().numpy(),
-        padding_value=padding_value, error=padding_threshold,
-    )
-    unpadded_pred = unpad_node_pairs(
-        pred.detach().cpu().numpy(),
-        padding_value=padding_value, error=padding_threshold,
-    )
-    G_gt = create_graph(unpadded_gt, threshold=merge_threshold)
-    G_pred = create_graph(unpadded_pred, threshold=merge_threshold)
-
-    gt_nodes = np.array([G_gt.nodes[n]['pos'] for n in G_gt])
-    pred_nodes = np.array([G_pred.nodes[n]['pos'] for n in G_pred])
-    adj_gt = nx.adjacency_matrix(G_gt).todense()
-    adj_pred = nx.adjacency_matrix(G_pred).todense()
-    gt_nodes = torch.from_numpy(gt_nodes)
-    pred_nodes = torch.from_numpy(pred_nodes)
-    adj_gt = torch.from_numpy(adj_gt)
-    adj_pred = torch.from_numpy(adj_pred)
-
-    streetmover_distance = StreetMoverDistance(eps=eps, max_iter=max_iter)
-
-    dist = streetmover_distance(
-        adj_gt, 
-        gt_nodes, 
-        adj_pred, 
-        pred_nodes, 
-        n_points=100
-    )[1][0]
-    return dist
