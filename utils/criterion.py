@@ -14,6 +14,7 @@ from utils.streetmover_distance import StreetMoverDistance
 
 
 __all__ = [
+    "earth_mover_distance",
     "get_street_mover_distance",
     "pairwise_undirected_graph_distance", 
     "pairwise_bce_loss_with_logits", 
