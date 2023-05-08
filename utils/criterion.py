@@ -200,6 +200,33 @@ def earth_mover_distance(x, y, ord=2):
 
 
 @register_model
+def hausdorff_distance(x, y, ord=2):
+    """
+    Hausdorff Distance between two sets of points.
+    
+    Args:
+        x: Tensor of shape (B, L, D).
+        y: Tensor of shape (B, L, D).
+
+    Returns:
+        1D Tensor for Hausdorff distance.
+    """
+    # Compute the distance matrix
+    distance_mat = torch.cdist(x, y, p=ord) / x.shape[-1]
+
+    # Compute the directed Hausdorff distance for the source to target
+    hd_src_to_tgt = torch.max(torch.min(distance_mat, dim=1).values)
+
+    # Compute the directed Hausdorff distance for the target to source
+    hd_tgt_to_src = torch.max(torch.min(distance_mat, dim=0).values)
+
+    # Hausdorff distance is the maximum of hd_src_to_tgt and hd_tgt_to_src
+    hausdorff_distance = torch.max(hd_src_to_tgt, hd_tgt_to_src)
+
+    return hausdorff_distance
+
+
+@register_model
 def undirected_earth_mover_distance(x, y, ord=2):
     """
     Earth Mover's Distance between two undirected graphs.
