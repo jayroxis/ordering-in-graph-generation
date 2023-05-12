@@ -4,7 +4,7 @@ import numpy as np
 from torch.nn.utils.rnn import pad_sequence
 import numpy as np
 import networkx as nx
-from utils.helpers import shuffle_tensor
+from utils.helpers import shuffle_tensor, create_graph
 from .spectral import *
 
 
@@ -279,6 +279,57 @@ def no_sort(seq):
     Simply no sorting.
     """
     return seq
+
+
+def dfs_sort(node_pair):
+    """
+    Depth First Search (DFS) sorting algorithm that takes a pair of nodes and returns a sorted node pairs 
+    based on the DFS traversal of a graph created from the given node pair.
+
+    Parameters:
+    -----------
+    node_pair : torch.Tensor
+        A tuple of two nodes representing the start and end nodes.
+
+    Returns:
+    --------
+    list:
+        A sorted node pair based on the DFS traversal of the graph.
+
+    """
+    G = create_graph(node_pair)
+    V, _ = extract_node_positions(G)
+    E = np.array(list(nx.edge_dfs(G, source=0))).T
+    V = torch.from_numpy(V)
+    E = torch.from_numpy(E)
+    node_pair = get_node_pairs_single(V, E)
+    return node_pair
+
+
+def bfs_sort(node_pair):
+    """
+    Breadth First Search (BFS) sorting algorithm that takes a pair of nodes and returns a sorted node pairs 
+    based on the BFS traversal of a graph created from the given node pair.
+
+    Parameters:
+    -----------
+    node_pair : torch.Tensor
+        A torch.Tensor of two nodes representing the start and end nodes.
+
+    Returns:
+    --------
+    list:
+        A sorted node pair based on the BFS traversal of the graph.
+
+    """
+    G = create_graph(node_pair)
+    V, _ = extract_node_positions(G)
+    E = np.array(list(nx.edge_bfs(G, source=0))).T
+    V = torch.from_numpy(V)
+    E = torch.from_numpy(E)
+    node_pair = get_node_pairs_single(V, E)
+    return node_pair
+
 
 
 def svd_sort(seq):

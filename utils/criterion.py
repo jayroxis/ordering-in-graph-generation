@@ -14,6 +14,7 @@ from utils.streetmover_distance import StreetMoverDistance
 
 
 __all__ = [
+    "earth_mover_distance",
     "get_street_mover_distance",
     "pairwise_undirected_graph_distance", 
     "pairwise_bce_loss_with_logits", 
@@ -172,7 +173,7 @@ def pairwise_cross_entropy(x, y):
 
 
 @register_model
-def undirected_earth_mover_distance(x, y, ord=2):
+def earth_mover_distance(x, y, ord=2):
     """
     Earth Mover's Distance between two sets of points.
     
@@ -187,7 +188,61 @@ def undirected_earth_mover_distance(x, y, ord=2):
         1D Tensor for earth mover distance for undirected graph.
     """
     # Compute the cost matrix
-    cost_mat = torch.cdist(x, y, p=ord)
+    cost_mat = torch.cdist(x, y, p=ord) / x.shape[-1]
+    
+    # Compute the assignment matrix using linear_sum_assignment
+    row_idx, col_idx = linear_sum_assignment(cost_mat.detach().numpy())
+
+    # Compute the EMD using the assignment matrix and cost matrix
+    emd = torch.mean(cost_mat[row_idx, col_idx])
+    
+    return emd
+
+
+@register_model
+def hausdorff_distance(x, y, ord=2):
+    """
+    Hausdorff Distance between two sets of points.
+    
+    Args:
+        x: Tensor of shape (B, L, D).
+        y: Tensor of shape (B, L, D).
+
+    Returns:
+        1D Tensor for Hausdorff distance.
+    """
+    # Compute the distance matrix
+    distance_mat = torch.cdist(x, y, p=ord) / x.shape[-1]
+
+    # Compute the directed Hausdorff distance for the source to target
+    hd_src_to_tgt = torch.max(torch.min(distance_mat, dim=1).values)
+
+    # Compute the directed Hausdorff distance for the target to source
+    hd_tgt_to_src = torch.max(torch.min(distance_mat, dim=0).values)
+
+    # Hausdorff distance is the maximum of hd_src_to_tgt and hd_tgt_to_src
+    hausdorff_distance = torch.max(hd_src_to_tgt, hd_tgt_to_src)
+
+    return hausdorff_distance
+
+
+@register_model
+def undirected_earth_mover_distance(x, y, ord=2):
+    """
+    Earth Mover's Distance between two undirected graphs.
+    
+    The differece between this EMD and Hungarian distance
+    is that EMD can work with two sets that have different
+    number of points.
+    Args:
+        x: Tensor of shape (B, L, D).
+        y: Tensor of shape (B, L, D).
+
+    Returns:
+        1D Tensor for earth mover distance for undirected graph.
+    """
+    # Compute the cost matrix
+    cost_mat = torch.cdist(x, y, p=ord) / x.shape[-1]
     
     # Get the last dimension of the target tensor
     target_dim = y.shape[-1]
@@ -200,7 +255,7 @@ def undirected_earth_mover_distance(x, y, ord=2):
         y[..., half_target_dim:], 
         y[..., :half_target_dim]
     ], dim=-1)
-    reversed_cost = torch.cdist(x, reversed_target, p=2)
+    reversed_cost = torch.cdist(x, reversed_target, p=2) / x.shape[-1]
     
     # Cost matrix is the minimum of reversed and original
     cost_mat = torch.minimum(cost_mat, reversed_cost)
@@ -227,7 +282,7 @@ def undirected_hausdorff_distance(x, y, ord=2):
         1D Tensor for Hausdorff distance for undirected graph.
     """
     # Compute the distance matrix
-    distance_mat = torch.cdist(x, y, p=ord)
+    distance_mat = torch.cdist(x, y, p=ord) / x.shape[-1]
 
     # Get the last dimension of the target tensor
     target_dim = y.shape[-1]
@@ -241,7 +296,7 @@ def undirected_hausdorff_distance(x, y, ord=2):
         y[..., :half_target_dim]
     ], dim=-1)
     
-    reversed_distance = torch.cdist(x, reversed_target, p=ord)
+    reversed_distance = torch.cdist(x, reversed_target, p=ord) / x.shape[-1]
 
     # Distance matrix is the minimum of reversed and original
     distance_mat = torch.minimum(distance_mat, reversed_distance)
@@ -257,6 +312,46 @@ def undirected_hausdorff_distance(x, y, ord=2):
 
     return hausdorff_distance
 
+
+@register_model
+def get_street_mover_distance(
+    pred, target, 
+    padding_value=-1.0,
+    padding_threshold=0.8,
+    merge_threshold=0.08,
+    eps=1e-6, 
+    max_iter=20
+):
+    unpadded_gt = unpad_node_pairs(
+        target.detach().cpu().numpy(),
+        padding_value=padding_value, threshold=padding_threshold,
+    )
+    unpadded_pred = unpad_node_pairs(
+        pred.detach().cpu().numpy(),
+        padding_value=padding_value, threshold=padding_threshold,
+    )
+    G_gt = create_graph(unpadded_gt, threshold=merge_threshold)
+    G_pred = create_graph(unpadded_pred, threshold=merge_threshold)
+
+    gt_nodes = np.array([G_gt.nodes[n]['pos'] for n in G_gt])
+    pred_nodes = np.array([G_pred.nodes[n]['pos'] for n in G_pred])
+    adj_gt = nx.adjacency_matrix(G_gt).todense()
+    adj_pred = nx.adjacency_matrix(G_pred).todense()
+    gt_nodes = torch.from_numpy(gt_nodes)
+    pred_nodes = torch.from_numpy(pred_nodes)
+    adj_gt = torch.from_numpy(adj_gt)
+    adj_pred = torch.from_numpy(adj_pred)
+
+    streetmover_distance = StreetMoverDistance(eps=eps, max_iter=max_iter)
+
+    dist = streetmover_distance(
+        adj_gt, 
+        gt_nodes, 
+        adj_pred, 
+        pred_nodes, 
+        n_points=100
+    )[1][0]
+    return dist
 
 
 # ====================== PyTorch Loss Modules ========================
@@ -645,44 +740,3 @@ class DimensionwiseHybridLoss(nn.Module):
         for row in table:
             repr_str += f"{row[0]:^6} {row[1]:^35} {row[2]:^7} {row[3]:^12} {row[4]:^10}\n"
         return repr_str
-
-
-
-def get_street_mover_distance(
-    pred, target, 
-    padding_value=-1.0,
-    padding_threshold=0.8,
-    merge_threshold=0.08,
-    eps=1e-6, 
-    max_iter=20
-):
-    unpadded_gt = unpad_node_pairs(
-        target.detach().cpu().numpy(),
-        padding_value=padding_value, error=padding_threshold,
-    )
-    unpadded_pred = unpad_node_pairs(
-        pred.detach().cpu().numpy(),
-        padding_value=padding_value, error=padding_threshold,
-    )
-    G_gt = create_graph(unpadded_gt, threshold=merge_threshold)
-    G_pred = create_graph(unpadded_pred, threshold=merge_threshold)
-
-    gt_nodes = np.array([G_gt.nodes[n]['pos'] for n in G_gt])
-    pred_nodes = np.array([G_pred.nodes[n]['pos'] for n in G_pred])
-    adj_gt = nx.adjacency_matrix(G_gt).todense()
-    adj_pred = nx.adjacency_matrix(G_pred).todense()
-    gt_nodes = torch.from_numpy(gt_nodes)
-    pred_nodes = torch.from_numpy(pred_nodes)
-    adj_gt = torch.from_numpy(adj_gt)
-    adj_pred = torch.from_numpy(adj_pred)
-
-    streetmover_distance = StreetMoverDistance(eps=eps, max_iter=max_iter)
-
-    dist = streetmover_distance(
-        adj_gt, 
-        gt_nodes, 
-        adj_pred, 
-        pred_nodes, 
-        n_points=100
-    )[1][0]
-    return dist
