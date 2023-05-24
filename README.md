@@ -1,5 +1,12 @@
-# GraphGPT
-A minimal implementation of GraphGPT for Vision-Graph generation.
+# Let There Be Order: Rethinking Ordering in Autoregressive Graph Generation
+Codes for the anomynous submission for NeurIPS 2023.
+
+## Instruction For Reproducing The Results
+
+Run the training script using:
+```
+python train.py --config [path/to/config] --gpu [GPU device ids]
+```
 
 ## Note On PyTorch Lightning Environment
 - **Do NOT use FP16 on PyTorch Lightning**, it may cause buggy checkpoint behavior. As we notice, it can cause a known bug that could lead to very poor model performance.

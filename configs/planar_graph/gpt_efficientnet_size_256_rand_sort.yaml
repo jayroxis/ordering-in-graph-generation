@@ -10,7 +10,7 @@ data:
   train_set:
     class: RenderedPlanarGraphDataset
     params:
-      sort_func: mean_square_sort
+      sort_func: random_sort
       num_samples: 40000
       img_size: 256
       num_points: 15
@@ -32,7 +32,7 @@ data:
   val_set:
     class: RenderedPlanarGraphDataset
     params:
-      sort_func: mean_square_sort
+      sort_func: random_sort
       num_samples: 500
       img_size: 256
       num_points: 15
@@ -123,13 +123,3 @@ model:
     class: ModelEmaV2
     params: 
       decay: 0.995
-
-  latent_sort_encoder:
-    class: LatentSortEncoderMLP
-    params: 
-      pairwise_dist: pairwise_undirected_graph_distance
-      input_dim: 4 
-      output_dim: 1 
-      hidden_dim: 256 
-      num_layers: 3
-      norm_out: True

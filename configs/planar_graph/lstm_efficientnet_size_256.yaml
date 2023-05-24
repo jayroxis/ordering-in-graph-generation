@@ -20,7 +20,7 @@ data:
   train_loader:
     class: torch.utils.data.DataLoader
     params:
-      batch_size: 150     # effective batch size = batch_size * num_gpu
+      batch_size: 100     # effective batch size = batch_size * num_gpu
       num_workers: 24
       pin_memory: False
       shuffle: True
@@ -42,7 +42,7 @@ data:
   val_loader:
     class: torch.utils.data.DataLoader
     params:
-      batch_size: 150     # effective batch size = batch_size * num_gpu
+      batch_size: 100     # effective batch size = batch_size * num_gpu
       num_workers: 8
       pin_memory: False
       shuffle: False
@@ -57,13 +57,13 @@ training:
   optimizer:
     class: torch.optim.AdamW
     params:
-      lr: 0.0001
+      lr: 0.0002
       weight_decay: 0.0
 
   scheduler:
     class: torch.optim.lr_scheduler.OneCycleLR
     params:
-      max_lr: 0.0001
+      max_lr: 0.0002
       total_steps: 1000            # should be the same as training epochs
       pct_start: 0.01
       div_factor: 25.0
@@ -109,9 +109,9 @@ model:
   params:
     in_chans: 3
     output_dim: 4
-    emb_dim: 512
+    emb_dim: 768
     img_size: 256
-    gpt_name: gpt_medium
+    gpt_name: lstm_small
     conv_backbone: efficientnet_b0
     pretrained: False
     stop_detector_cfg:
@@ -123,13 +123,3 @@ model:
     class: ModelEmaV2
     params: 
       decay: 0.995
-
-  latent_sort_encoder:
-    class: LatentSortEncoderMLP
-    params: 
-      pairwise_dist: pairwise_undirected_graph_distance
-      input_dim: 4 
-      output_dim: 1 
-      hidden_dim: 256 
-      num_layers: 3
-      norm_out: True

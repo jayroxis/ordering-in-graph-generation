@@ -4,7 +4,7 @@
 class: VisionSequenceModel
 
 data:
-  name: PlanarGraphDataset
+  name: CircuitSignalToRawFeaturesDataset
   class: StandardDataModule
 
   train_set:
@@ -16,7 +16,7 @@ data:
   train_loader:
     class: torch.utils.data.DataLoader
     params:
-      batch_size: 100     # effective batch size = batch_size * num_gpu
+      batch_size: 150     # effective batch size = batch_size * num_gpu
       num_workers: 16
       pin_memory: True
       shuffle: True
@@ -49,13 +49,13 @@ training:
   optimizer:
     class: torch.optim.AdamW
     params:
-      lr: 0.0002
-      weight_decay: 0.0001
+      lr: 0.0001
+      weight_decay: 0.0000
 
   scheduler:
     class: torch.optim.lr_scheduler.OneCycleLR
     params:
-      max_lr: 0.0002
+      max_lr: 0.0001
       total_steps: 200            # should be the same as training epochs
       pct_start: 0.05
       div_factor: 100.0
@@ -63,7 +63,7 @@ training:
       anneal_strategy: 'cos'
 
   params:                   # arguments for PyTorch Lightning Trainer
-    max_epochs: 200         # should be the same as training epochs
+    max_epochs: 60         # should be the same as training epochs
     accelerator: gpu
     precision: 32
     strategy: ddp_find_unused_parameters_false

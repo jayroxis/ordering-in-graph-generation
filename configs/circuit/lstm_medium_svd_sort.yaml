@@ -4,25 +4,21 @@
 class: VisionSequenceModel
 
 data:
-  name: PlanarGraphDataset
+  name: CircuitSignalToRawFeaturesDataset
   class: StandardDataModule
 
   train_set:
-    class: RenderedPlanarGraphDataset
+    class: CircuitSignalToRawFeaturesDataset
     params:
-      sort_func: mean_square_sort
-      num_samples: 40000
-      img_size: 256
-      num_points: 15
-      epsilon: 0.1
-      tiny_angle: 30
-
+      data_file: archived/circuit_data/train_preprocessed.pkl
+      sort_func: svd_sort
+      
   train_loader:
     class: torch.utils.data.DataLoader
     params:
-      batch_size: 150     # effective batch size = batch_size * num_gpu
-      num_workers: 24
-      pin_memory: False
+      batch_size: 100     # effective batch size = batch_size * num_gpu
+      num_workers: 16
+      pin_memory: True
       shuffle: True
       collate_fn:
         class: PadSequenceConstant
@@ -30,21 +26,17 @@ data:
           pad_value: -1.0
 
   val_set:
-    class: RenderedPlanarGraphDataset
+    class: CircuitSignalToRawFeaturesDataset
     params:
-      sort_func: mean_square_sort
-      num_samples: 500
-      img_size: 256
-      num_points: 15
-      epsilon: 0.1
-      tiny_angle: 30
+      data_file: archived/circuit_data/valid_preprocessed.pkl
+      sort_func: svd_sort
 
   val_loader:
     class: torch.utils.data.DataLoader
     params:
-      batch_size: 150     # effective batch size = batch_size * num_gpu
+      batch_size: 500     # effective batch size = batch_size * num_gpu
       num_workers: 8
-      pin_memory: False
+      pin_memory: True
       shuffle: False
       collate_fn:
         class: PadSequenceConstant
@@ -53,67 +45,62 @@ data:
 
 # ==================== Training Configs =========================
 training:
-  save_dir: ./runs/planar
+  save_dir: ./runs/circuit
   optimizer:
     class: torch.optim.AdamW
     params:
-      lr: 0.0001
-      weight_decay: 0.0
+      lr: 0.0002
+      weight_decay: 0.0000
 
   scheduler:
     class: torch.optim.lr_scheduler.OneCycleLR
     params:
-      max_lr: 0.0001
-      total_steps: 1000            # should be the same as training epochs
-      pct_start: 0.01
-      div_factor: 25.0
+      max_lr: 0.0002
+      total_steps: 200            # should be the same as training epochs
+      pct_start: 0.05
+      div_factor: 100.0
       final_div_factor: 10000.0
       anneal_strategy: 'cos'
 
   params:                   # arguments for PyTorch Lightning Trainer
-    max_epochs: 1000         # should be the same as training epochs
+    max_epochs: 60         # should be the same as training epochs
     accelerator: gpu
     precision: 32
     strategy: ddp_find_unused_parameters_false
     enable_checkpointing: True
     check_val_every_n_epoch: 1
     log_every_n_steps: 50
-  
+    
   train_metrics:
     l1_loss: 
       class: nn.L1Loss
-      weight: 0.0
+      weight: 1.0
     mse_loss:
       class: nn.MSELoss
-      weight: 0.0
-    ug_loss:
-      class: UndirectedGraphLoss
       weight: 1.0
 
   eval_metrics:
     l1_loss: 
       class: nn.L1Loss
-      weight: 0.0
+      weight: 1.0
     mse_loss:
       class: nn.MSELoss
-      weight: 0.0
-    ug_loss:
-      class: UndirectedGraphLoss
       weight: 1.0
 
 # ====================== Model Configs =========================
 
 model:
-  name: VisualGraphGPT
-  class: vision_gpt
+  name: ConditionalGraphGPT
+  class: seq_gpt
   params:
-    in_chans: 3
-    output_dim: 4
+    input_dim: 2
+    output_dim: 9
     emb_dim: 512
-    img_size: 256
-    gpt_name: gpt_medium
-    conv_backbone: efficientnet_b0
-    pretrained: False
+    gpt_name: lstm_medium
+    prompt_enc_name: MLPEncoder
+    prompt_enc_cfg:
+      hidden_dim: 256 
+      num_layers: 2
     stop_detector_cfg:
       model_name: StopTokenDetectorFloat
       stop_value: -1.0
@@ -123,13 +110,3 @@ model:
     class: ModelEmaV2
     params: 
       decay: 0.995
-
-  latent_sort_encoder:
-    class: LatentSortEncoderMLP
-    params: 
-      pairwise_dist: pairwise_undirected_graph_distance
-      input_dim: 4 
-      output_dim: 1 
-      hidden_dim: 256 
-      num_layers: 3
-      norm_out: True

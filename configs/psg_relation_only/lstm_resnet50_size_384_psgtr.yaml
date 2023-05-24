@@ -8,9 +8,10 @@ data:
   class: StandardDataModule
 
   train_set:
-    class: PSGRelationDataset
+    class: PSGTRDataset
     params:
-      sort_func: no_sort
+      sort_func: lex_sort
+      relation_file: archived/psgtr_pred.json
       ann_file: ${TMPFS}/annotations/psg.json
       data_root: ${TMPFS}/
       test_mode: False
@@ -20,13 +21,13 @@ data:
   val_set:
     class: PSGRelationDataset
     params:
-      sort_func: no_sort
+      sort_func: lex_sort
       ann_file: ${TMPFS}/annotations/psg.json
       data_root: ${TMPFS}/
       test_mode: True
       split: test
       img_size: 384
-
+      
   train_loader:
     class: torch.utils.data.DataLoader
     params:
@@ -61,7 +62,7 @@ model:
     in_chans: 3
     output_dim: 325
     emb_dim: 1024
-    gpt_name: gpt_large
+    gpt_name: lstm_large
     conv_backbone: resnet50
     pretrained: True
     vis_enc_cfg:
@@ -100,7 +101,7 @@ training:
       anneal_strategy: 'cos'
 
   params:                    # arguments for PyTorch Lightning Trainer
-    max_epochs: 12         # should be the same as training epochs
+    max_epochs: 12           # should be the same as training epochs
     accelerator: gpu
     precision: 32
     strategy: ddp_find_unused_parameters_false
@@ -111,9 +112,18 @@ training:
 
   # ------------------- Training Metrics -----------------------
   train_metrics:
-    bce_loss:    
-      class: nn.BCEWithLogitsLoss
-      weight: 1.0
+    obj_1_ce_loss:        #  object 1 (subject)
+      class: CustomCrossEntropyLoss
+      weight: 0.33
+      index: 0:134
+    obj_2_ce_loss: 
+      class: CustomCrossEntropyLoss
+      weight: 0.33
+      index: 134:268
+    predicate_ce_loss:    #  object 2  (object)
+      class: CustomCrossEntropyLoss
+      weight: 0.33
+      index: 268:325
     obj_1_accuracy:
       class: TorchMetricsMulticlass
       weight: 0.0
@@ -138,9 +148,18 @@ training:
 
   # ------------------- Evaluation Metrics -----------------------
   eval_metrics:
-    bce_loss:    
-      class: nn.BCEWithLogitsLoss
-      weight: 1.0
+    obj_1_ce_loss:        #  object 1 (subject)
+      class: CustomCrossEntropyLoss
+      weight: 0.33
+      index: 0:134
+    obj_2_ce_loss: 
+      class: CustomCrossEntropyLoss
+      weight: 0.33
+      index: 134:268
+    predicate_ce_loss:    #  object 2  (object)
+      class: CustomCrossEntropyLoss
+      weight: 0.33
+      index: 268:325
     obj_1_ce_loss:    #  object 1 (subject)
       class: nn.CrossEntropyLoss
       weight: 0.0
@@ -174,3 +193,45 @@ training:
         metric: torchmetrics.classification.MulticlassAccuracy
         num_classes: 57
       index: 268:325
+    # obj_1_f1_score:
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassF1Score
+    #     num_classes: 134
+    #   index: 0:134
+    # obj_2_f1_score: 
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassF1Score
+    #     num_classes: 134
+    #   index: 134:268
+    # predicate_f1_score:
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassF1Score
+    #     num_classes: 57
+    #   index: 268:325
+    # obj_1_auroc:
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassAUROC
+    #     num_classes: 134
+    #   index: 0:134
+    # obj_2_auroc: 
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassAUROC
+    #     num_classes: 134
+    #   index: 134:268
+    # predicate_auroc:
+    #   class: TorchMetricsMulticlass
+    #   weight: 0.0
+    #   params:
+    #     metric: torchmetrics.classification.MulticlassAUROC
+    #     num_classes: 57
+    #   index: 268:325

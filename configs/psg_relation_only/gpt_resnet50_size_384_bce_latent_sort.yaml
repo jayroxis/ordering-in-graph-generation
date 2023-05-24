@@ -10,23 +10,31 @@ data:
   train_set:
     class: PSGRelationDataset
     params:
-      sort_func: no_sort
+      sort_func:
+        class: latent_sort
+        params:
+          encoder_path: asset/scene_graph_mlp.jit.pth
       ann_file: ${TMPFS}/annotations/psg.json
       data_root: ${TMPFS}/
       test_mode: False
       split: train
       img_size: 384
+      one_hot: True
 
   val_set:
     class: PSGRelationDataset
     params:
-      sort_func: no_sort
+      sort_func:
+        class: latent_sort
+        params:
+          encoder_path: asset/scene_graph_mlp.jit.pth
       ann_file: ${TMPFS}/annotations/psg.json
       data_root: ${TMPFS}/
       test_mode: True
       split: test
       img_size: 384
-
+      one_hot: True
+      
   train_loader:
     class: torch.utils.data.DataLoader
     params:

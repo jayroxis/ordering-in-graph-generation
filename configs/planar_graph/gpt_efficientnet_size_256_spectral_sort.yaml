@@ -10,10 +10,7 @@ data:
   train_set:
     class: RenderedPlanarGraphDataset
     params:
-      sort_func:
-        class: latent_sort
-        params:
-          encoder_path: asset/mlp_latent_sorter.jit.pth
+      sort_func: spectral_sort
       num_samples: 40000
       img_size: 256
       num_points: 15
@@ -23,8 +20,8 @@ data:
   train_loader:
     class: torch.utils.data.DataLoader
     params:
-      batch_size: 40     # effective batch size = batch_size * num_gpu
-      num_workers: 8
+      batch_size: 150     # effective batch size = batch_size * num_gpu
+      num_workers: 24
       pin_memory: False
       shuffle: True
       collate_fn:
@@ -35,10 +32,7 @@ data:
   val_set:
     class: RenderedPlanarGraphDataset
     params:
-      sort_func:
-        class: latent_sort
-        params:
-          encoder_path: asset/mlp_latent_sorter.jit.pth
+      sort_func: spectral_sort
       num_samples: 500
       img_size: 256
       num_points: 15
@@ -48,7 +42,7 @@ data:
   val_loader:
     class: torch.utils.data.DataLoader
     params:
-      batch_size: 100     # effective batch size = batch_size * num_gpu
+      batch_size: 150     # effective batch size = batch_size * num_gpu
       num_workers: 8
       pin_memory: False
       shuffle: False
@@ -63,13 +57,13 @@ training:
   optimizer:
     class: torch.optim.AdamW
     params:
-      lr: 0.0002
+      lr: 0.0001
       weight_decay: 0.0
 
   scheduler:
     class: torch.optim.lr_scheduler.OneCycleLR
     params:
-      max_lr: 0.0002
+      max_lr: 0.0001
       total_steps: 1000            # should be the same as training epochs
       pct_start: 0.01
       div_factor: 25.0
@@ -118,7 +112,7 @@ model:
     emb_dim: 512
     img_size: 256
     gpt_name: gpt_medium
-    conv_backbone: image_patching_16
+    conv_backbone: efficientnet_b0
     pretrained: False
     stop_detector_cfg:
       model_name: StopTokenDetectorFloat
