@@ -8,24 +8,33 @@ data:
   class: StandardDataModule
 
   train_set:
-    class: PSGRelationDataset
+    class: PSGTRDataset
     params:
-      sort_func: no_sort
+      sort_func:
+        class: latent_sort
+        params:
+          encoder_path: asset/scene_graph_mlp.jit.pth
+      relation_file: archived/psgtr_pred.json
       ann_file: ${TMPFS}/annotations/psg.json
       data_root: ${TMPFS}/
       test_mode: False
       split: train
       img_size: 384
+      one_hot: True
 
   val_set:
     class: PSGRelationDataset
     params:
-      sort_func: no_sort
+      sort_func:
+        class: latent_sort
+        params:
+          encoder_path: asset/scene_graph_mlp.jit.pth
       ann_file: ${TMPFS}/annotations/psg.json
       data_root: ${TMPFS}/
       test_mode: True
       split: test
       img_size: 384
+      one_hot: True
 
   train_loader:
     class: torch.utils.data.DataLoader
@@ -100,7 +109,7 @@ training:
       anneal_strategy: 'cos'
 
   params:                    # arguments for PyTorch Lightning Trainer
-    max_epochs: 12         # should be the same as training epochs
+    max_epochs: 12           # should be the same as training epochs
     accelerator: gpu
     precision: 32
     strategy: ddp_find_unused_parameters_false
@@ -111,9 +120,18 @@ training:
 
   # ------------------- Training Metrics -----------------------
   train_metrics:
-    bce_loss:    
-      class: nn.BCEWithLogitsLoss
-      weight: 1.0
+    obj_1_ce_loss:        #  object 1 (subject)
+      class: CustomCrossEntropyLoss
+      weight: 0.33
+      index: 0:134
+    obj_2_ce_loss: 
+      class: CustomCrossEntropyLoss
+      weight: 0.33
+      index: 134:268
+    predicate_ce_loss:    #  object 2  (object)
+      class: CustomCrossEntropyLoss
+      weight: 0.33
+      index: 268:325
     obj_1_accuracy:
       class: TorchMetricsMulticlass
       weight: 0.0
@@ -138,9 +156,18 @@ training:
 
   # ------------------- Evaluation Metrics -----------------------
   eval_metrics:
-    bce_loss:    
-      class: nn.BCEWithLogitsLoss
-      weight: 1.0
+    obj_1_ce_loss:        #  object 1 (subject)
+      class: CustomCrossEntropyLoss
+      weight: 0.33
+      index: 0:134
+    obj_2_ce_loss: 
+      class: CustomCrossEntropyLoss
+      weight: 0.33
+      index: 134:268
+    predicate_ce_loss:    #  object 2  (object)
+      class: CustomCrossEntropyLoss
+      weight: 0.33
+      index: 268:325
     obj_1_ce_loss:    #  object 1 (subject)
       class: nn.CrossEntropyLoss
       weight: 0.0

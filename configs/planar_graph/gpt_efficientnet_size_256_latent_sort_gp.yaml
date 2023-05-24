@@ -10,7 +10,10 @@ data:
   train_set:
     class: RenderedPlanarGraphDataset
     params:
-      sort_func: mean_square_sort
+      sort_func:
+        class: latent_sort
+        params:
+          encoder_path: asset/planar_mlp_gp.jit.pth
       num_samples: 40000
       img_size: 256
       num_points: 15
@@ -32,7 +35,10 @@ data:
   val_set:
     class: RenderedPlanarGraphDataset
     params:
-      sort_func: mean_square_sort
+      sort_func:
+        class: latent_sort
+        params:
+          encoder_path: asset/planar_mlp_gp.jit.pth
       num_samples: 500
       img_size: 256
       num_points: 15
@@ -65,7 +71,7 @@ training:
     params:
       max_lr: 0.0001
       total_steps: 1000            # should be the same as training epochs
-      pct_start: 0.01
+      pct_start: 0.05
       div_factor: 25.0
       final_div_factor: 10000.0
       anneal_strategy: 'cos'
@@ -123,13 +129,3 @@ model:
     class: ModelEmaV2
     params: 
       decay: 0.995
-
-  latent_sort_encoder:
-    class: LatentSortEncoderMLP
-    params: 
-      pairwise_dist: pairwise_undirected_graph_distance
-      input_dim: 4 
-      output_dim: 1 
-      hidden_dim: 256 
-      num_layers: 3
-      norm_out: True

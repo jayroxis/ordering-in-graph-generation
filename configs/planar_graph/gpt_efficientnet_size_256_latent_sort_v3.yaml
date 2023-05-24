@@ -125,11 +125,12 @@ model:
       decay: 0.995
 
   latent_sort_encoder:
-    class: LatentSortEncoderMLP
+    class: LatentSortEncoderTransformer
     params: 
       pairwise_dist: pairwise_undirected_graph_distance
       input_dim: 4 
       output_dim: 1 
-      hidden_dim: 256 
-      num_layers: 3
+      hidden_dim: 256
+      num_layers: 2
+      nhead: 4
       norm_out: True
