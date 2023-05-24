@@ -1,5 +1,4 @@
 # Let There Be Order: Rethinking Ordering in Autoregressive Graph Generation
-Codes for the anomynous submission for NeurIPS 2023.
 
 ## Instruction For Reproducing The Results
 
