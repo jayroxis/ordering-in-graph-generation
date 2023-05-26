@@ -1,6 +1,6 @@
 # Let There Be Order: Rethinking Ordering in Autoregressive Graph Generation
 
-Arxiv [[paper]](https://arxiv.org/abs/2305.15562)
+This repostory is the PyTorch implementation of [[paper]](https://arxiv.org/abs/2305.15562).
 
 To cite this work, please use the following:
 ```bibtex
