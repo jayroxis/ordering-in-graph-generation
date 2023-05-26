@@ -14,7 +14,7 @@ To cite this work, please use the following:
 }
 ```
 
-## Instruction For Reproducing The Results
+## Training Commands
 
 Run the training script using:
 ```
