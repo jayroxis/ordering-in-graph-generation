@@ -1,7 +1,8 @@
 # Let There Be Order: Rethinking Ordering in Autoregressive Graph Generation
 
-[paper](https://arxiv.org/abs/2305.15562)
+Arxiv [[paper]](https://arxiv.org/abs/2305.15562)
 
+To cite this work, please use the following:
 ```bibtex
 @misc{bu2023let,
       title={Let There Be Order: Rethinking Ordering in Autoregressive Graph Generation}, 
@@ -55,6 +56,18 @@ python train.py --config [path/to/config] --gpu [GPU device ids]
 **Image to Topological Graph** (Proposed in This Work): [Planar_Graph](data/planar_graph.py).
 
 ***Description***: This is a synthetic dataset used in this paper for learning a 2D topoligical planar graph from its rendered image. Models are expected to predict not only the graph connectivity but also the node coordinates.
+
+To cite this work, please use the following:
+```bibtex
+@misc{bu2023let,
+      title={Let There Be Order: Rethinking Ordering in Autoregressive Graph Generation}, 
+      author={Jie Bu and Kazi Sajeed Mehrab and Anuj Karpatne},
+      year={2023},
+      eprint={2305.15562},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
 
 ### Scene Graph Dataset For Visual Understanding
 **Panoptic Scene Graph Dataset** (Based On COCO-2017): [PSG](https://github.com/Jingkang50/OpenPSG).
