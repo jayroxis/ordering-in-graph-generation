@@ -1,5 +1,18 @@
 # Let There Be Order: Rethinking Ordering in Autoregressive Graph Generation
 
+[paper](https://arxiv.org/abs/2305.15562)
+
+```bibtex
+@misc{bu2023let,
+      title={Let There Be Order: Rethinking Ordering in Autoregressive Graph Generation}, 
+      author={Jie Bu and Kazi Sajeed Mehrab and Anuj Karpatne},
+      year={2023},
+      eprint={2305.15562},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
+
 ## Instruction For Reproducing The Results
 
 Run the training script using:
